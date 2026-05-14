@@ -1,0 +1,60 @@
+name: jankdoc_workspace
+
+packages:
+  - packages/*
+
+command:
+  bootstrap:
+    usePubspecOverrides: true
+
+scripts:
+  # Analyze with --fatal-warnings only (not --fatal-infos).
+  # Info-level lints (prefer_const, comment_references, etc.) are style
+  # suggestions that don't affect correctness and would break CI on noisy
+  # generated code. Warnings and errors are always fatal.
+  analyze:
+    run: melos exec -- dart analyze
+    description: Run dart analyze in all packages (warnings + errors)
+
+  analyze:strict:
+    run: melos exec -- dart analyze --fatal-infos
+    description: Run dart analyze with all lints fatal (for pre-release checks)
+
+  test:
+    run: melos exec --dir-exists=test -- dart test
+    description: Run tests in all packages
+
+  test:eval:
+    run: dart test packages/jankdoc_eval
+    description: Run full eval harness
+
+  ci:eval:
+    run: dart run packages/jankdoc/bin/ci.dart --eval --verbose
+    description: Run the CI eval suite (6 inline fixtures, exits 1 on any fail)
+
+  build:runner:
+    run: melos exec --depends-on="build_runner" -- dart run build_runner build --delete-conflicting-outputs
+    description: Run build_runner in all packages
+
+  daemon:build:
+    run: dart compile exe packages/jankdoc/bin/daemon.dart -o packages/jankdoc/bin/jankdoc_daemon
+    description: Compile the analysis daemon to a native binary
+
+  ci:build:
+    run: dart compile exe packages/jankdoc/bin/ci.dart -o packages/jankdoc/bin/jankdoc_ci
+    description: Compile the CI runner to a native binary
+
+  extension:build:
+    run: >
+      flutter build web --release
+      --project-dir packages/jankdoc_extension
+      --output packages/jankdoc/extension/devtools/build
+    description: Build the DevTools extension web app and place output where DevTools expects it
+
+  format:
+    run: melos exec -- dart format lib test bin
+    description: Format all Dart code
+
+  clean:
+    run: melos exec -- dart clean
+    description: Clean all packages

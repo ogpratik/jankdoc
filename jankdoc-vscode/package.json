@@ -1,0 +1,95 @@
+{
+  "name": "jankdoc",
+  "displayName": "JankDoc",
+  "description": "Zero-config Flutter jank diagnosis via local AI. Starts the JankDoc daemon automatically when a Flutter debug session starts.",
+  "version": "1.0.0",
+  "publisher": "ogpratik",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ogpratik/jankdoc"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Debuggers",
+    "Other"
+  ],
+  "keywords": [
+    "flutter",
+    "performance",
+    "jank",
+    "devtools",
+    "ollama"
+  ],
+  "activationEvents": [
+    "onDebugSession:dart"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "jankdoc.startDaemon",
+        "title": "JankDoc: Start Analysis Daemon",
+        "icon": "$(pulse)"
+      },
+      {
+        "command": "jankdoc.stopDaemon",
+        "title": "JankDoc: Stop Analysis Daemon"
+      },
+      {
+        "command": "jankdoc.openDevTools",
+        "title": "JankDoc: Open in DevTools",
+        "icon": "$(link-external)"
+      }
+    ],
+    "configuration": {
+      "title": "JankDoc",
+      "properties": {
+        "jankdoc.port": {
+          "type": "number",
+          "default": 9101,
+          "description": "Port the JankDoc analysis daemon listens on."
+        },
+        "jankdoc.ollamaUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:11434",
+          "description": "Base URL for the local Ollama instance."
+        },
+        "jankdoc.model": {
+          "type": "string",
+          "default": "qwen2.5-coder:7b",
+          "description": "Ollama model ID to use for LLM-tier diagnosis."
+        },
+        "jankdoc.autoStart": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically start the daemon when a Flutter debug session begins."
+        }
+      }
+    },
+    "statusBarItems": [
+      {
+        "id": "jankdoc.status",
+        "alignment": "right",
+        "priority": 100
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext .ts",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.57.0",
+    "@vscode/vsce": "^2.24.0"
+  }
+}

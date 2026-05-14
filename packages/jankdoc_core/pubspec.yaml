@@ -1,0 +1,15 @@
+name: jankdoc_core
+description: Shared models, interfaces, and domain types for JankDoc.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+
+dependencies:
+  collection: ^1.18.0
+  meta: ^1.15.0
+
+dev_dependencies:
+  lints: ^4.0.0
+  test: ^1.25.0

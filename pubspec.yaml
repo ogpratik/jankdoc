@@ -1,0 +1,12 @@
+name: jankdoc_workspace
+publish_to: none
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+
+workspace:
+  - packages/jankdoc_core
+  - packages/jankdoc_rules
+  - packages/jankdoc
+  - packages/jankdoc_extension
+  - packages/jankdoc_eval

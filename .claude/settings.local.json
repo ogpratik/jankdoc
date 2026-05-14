@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs cat)",
+      "Bash([ -f \"/Users/pratikpandey/Documents/Development/jankdoc/$f\" ])",
+      "Bash(find /Users/pratikpandey -path \"*/flutter/packages/flutter/lib/src/widgets/framework.dart\" 2>/dev/null | head -3)",
+      "Bash(dart analyze *)",
+      "Bash(dart test *)",
+      "Bash(dart pub *)",
+      "Bash(grep -n '\\\\$i\\\\|\\\\\\\\$' /Users/pratikpandey/Documents/Development/jankdoc/packages/jankdoc/lib/src/kb/kb_catalog.dart)",
+      "Bash(grep -v \"\\\\\\\\\\\\\\\\$\")",
+      "Bash(dart run *)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(echo \"exit code: $?\")"
+    ]
+  }
+}

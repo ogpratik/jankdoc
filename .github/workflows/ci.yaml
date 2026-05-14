@@ -1,0 +1,180 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─── Analysis ──────────────────────────────────────────────────────────────
+  analyze:
+    name: Dart analyze
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: "3.6.0"
+      - name: Install Melos
+        run: dart pub global activate melos
+      - name: Bootstrap workspace
+        run: melos bootstrap
+      - name: Analyze (errors + warnings fatal)
+        run: melos run analyze
+
+  # ─── Unit tests ────────────────────────────────────────────────────────────
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    needs: analyze
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: "3.6.0"
+      - name: Install Melos
+        run: dart pub global activate melos
+      - name: Bootstrap workspace
+        run: melos bootstrap
+      - name: Run tests
+        run: melos run test
+
+  # ─── Eval gate ─────────────────────────────────────────────────────────────
+  eval:
+    name: Eval gate (rule pass-rate ≥ 90%)
+    runs-on: ubuntu-latest
+    needs: analyze
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: "3.6.0"
+      - name: Install Melos
+        run: dart pub global activate melos
+      - name: Bootstrap workspace
+        run: melos bootstrap
+      - name: Run eval suite
+        run: dart test packages/jankdoc_eval/test/rule_eval_test.dart --reporter expanded
+
+  # ─── CI binary eval ────────────────────────────────────────────────────────
+  ci-eval:
+    name: CI runner eval (inline fixtures)
+    runs-on: ubuntu-latest
+    needs: analyze
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: "3.6.0"
+      - name: Install Melos
+        run: dart pub global activate melos
+      - name: Bootstrap workspace
+        run: melos bootstrap
+      - name: Run CI eval mode
+        working-directory: packages/jankdoc
+        run: dart run bin/ci.dart --eval --verbose
+
+  # ─── Extension analysis ─────────────────────────────────────────────────────
+  extension-analyze:
+    name: Analyze DevTools extension
+    runs-on: ubuntu-latest
+    needs: analyze
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.29.0"
+          channel: stable
+      - name: Install Melos
+        run: dart pub global activate melos
+      - name: Bootstrap workspace
+        run: melos bootstrap
+      - name: Analyze extension
+        working-directory: packages/jankdoc_extension
+        run: flutter analyze lib/
+
+  # ─── Extension build ───────────────────────────────────────────────────────
+  extension-build:
+    name: Build DevTools extension
+    runs-on: ubuntu-latest
+    needs: extension-analyze
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.29.0"
+          channel: stable
+      - name: Install Melos
+        run: dart pub global activate melos
+      - name: Bootstrap workspace
+        run: melos bootstrap
+      - name: Build extension web app
+        working-directory: packages/jankdoc_extension
+        run: flutter build web --release --output ../jankdoc/extension/devtools/build
+      - name: Upload extension artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: devtools-extension-build
+          path: packages/jankdoc/extension/devtools/build
+          retention-days: 7
+
+  # ─── Daemon compile check ──────────────────────────────────────────────────
+  daemon-compile:
+    name: Compile daemon + CI binaries
+    runs-on: ubuntu-latest
+    needs: analyze
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: "3.6.0"
+      - name: Install Melos
+        run: dart pub global activate melos
+      - name: Bootstrap workspace
+        run: melos bootstrap
+      - name: Compile daemon
+        working-directory: packages/jankdoc
+        run: dart compile exe bin/daemon.dart -o /tmp/jankdoc_daemon
+      - name: Smoke-test daemon --help
+        run: /tmp/jankdoc_daemon --help
+      - name: Compile CI runner
+        working-directory: packages/jankdoc
+        run: dart compile exe bin/ci.dart -o /tmp/jankdoc_ci
+      - name: Smoke-test CI runner --eval
+        run: /tmp/jankdoc_ci --eval --verbose
+
+  # ─── SARIF code scanning upload ───────────────────────────────────────────
+  # Optional: upload SARIF to GitHub Code Scanning if telemetry recorded.
+  # Set secret JANKDOC_TELEMETRY_JSON with a captured session's batch JSON.
+  sarif-upload:
+    name: Upload SARIF to Code Scanning
+    runs-on: ubuntu-latest
+    needs: daemon-compile
+    if: ${{ github.event_name == 'push' && vars.JANKDOC_TELEMETRY_JSON != '' }}
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: "3.6.0"
+      - name: Install Melos
+        run: dart pub global activate melos
+      - name: Bootstrap workspace
+        run: melos bootstrap
+      - name: Compile CI runner
+        working-directory: packages/jankdoc
+        run: dart compile exe bin/ci.dart -o /tmp/jankdoc_ci
+      - name: Run analysis and emit SARIF
+        run: |
+          echo '${{ vars.JANKDOC_TELEMETRY_JSON }}' | \
+            /tmp/jankdoc_ci --output results.sarif.json || true
+      - name: Upload SARIF to GitHub
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif.json

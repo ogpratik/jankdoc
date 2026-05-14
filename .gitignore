@@ -1,0 +1,31 @@
+# Dart/Flutter
+.dart_tool/
+.packages
+build/
+*.g.dart
+*.freezed.dart
+pubspec.lock
+doc/api/
+
+# JankDoc runtime
+~/.jankdoc/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+.vscode/settings.json
+
+# Melos
+.melos_tool/
+
+# Eval
+packages/jankdoc_eval/test_apps/**/build/
+packages/jankdoc_eval/results/
+
+# Node (VS Code companion)
+jankdoc-vscode/node_modules/
+jankdoc-vscode/out/
+jankdoc-vscode/*.vsix

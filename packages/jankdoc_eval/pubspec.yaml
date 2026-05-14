@@ -1,0 +1,22 @@
+name: jankdoc_eval
+description: >
+  Evaluation harness for JankDoc's diagnostic pipeline.
+  Measures rule hit-rate, LLM accuracy, retrieval quality, and latency.
+  Runs in pure Dart — no Flutter, no device needed.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+
+dependencies:
+  jankdoc_core:
+    path: ../jankdoc_core
+  jankdoc_rules:
+    path: ../jankdoc_rules
+  collection: ^1.18.0
+  meta: ^1.15.0
+
+dev_dependencies:
+  lints: ^4.0.0
+  test: ^1.25.0
