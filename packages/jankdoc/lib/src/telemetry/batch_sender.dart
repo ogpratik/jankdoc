@@ -19,12 +19,45 @@ final class BatchSender {
     required this.daemonPort,
     required this.sessionId,
     required this.deviceInfo,
-  }) : _client = HttpClient();
+  })  : _client = kIsWeb ? null : HttpClient(),
+        _projectFingerprint = _computeProjectFingerprint();
 
   final int daemonPort;
   final String sessionId;
   final DeviceInfo deviceInfo;
-  final HttpClient _client;
+  final HttpClient? _client;
+  final String _projectFingerprint;
+
+  /// Computes a stable 16-char hex fingerprint of the project root.
+  ///
+  /// Uses FNV-1a 64-bit applied to [Directory.current.path].
+  /// When running via `flutter run`, the current directory is the project
+  /// root — stable and unique per project on this machine.
+  /// The raw path is never transmitted; only the hash is sent.
+  static String _computeProjectFingerprint() {
+    if (kIsWeb) return '';
+    try {
+      final projectPath = Directory.current.path;
+      final bytes = utf8.encode(projectPath);
+
+      // FNV-1a 64-bit using BigInt to avoid JS overflow errors.
+      // Offset basis: 0xcbf29ce484222325
+      var h = BigInt.parse('14695981039346656037');
+      // Prime: 0x100000001b3
+      final prime = BigInt.parse('1099511628211');
+      // Mask: 0xFFFFFFFFFFFFFFFF
+      final mask = BigInt.parse('18446744073709551615');
+
+      for (final b in bytes) {
+        h ^= BigInt.from(b);
+        h = (h * prime) & mask;
+      }
+      return h.toRadixString(16).padLeft(16, '0');
+    } catch (_) {
+      // Fallback if platform doesn't support Directory.current (e.g. web)
+      return '';
+    }
+  }
 
   static const _windowMs = 500;
 
@@ -53,7 +86,7 @@ final class BatchSender {
 
   void dispose() {
     _timer?.cancel();
-    _client.close(force: true);
+    _client?.close(force: true);
   }
 
   // ── Internal ───────────────────────────────────────────────────────────────
@@ -67,6 +100,7 @@ final class BatchSender {
     final now = DateTime.now().millisecondsSinceEpoch;
     final batch = TelemetryBatch(
       sessionId: sessionId,
+      projectFingerprint: _projectFingerprint,
       windowStartMs: now - _windowMs,
       windowEndMs: now,
       jankFrames: frames,
@@ -78,11 +112,12 @@ final class BatchSender {
   }
 
   Future<void> _post(TelemetryBatch batch) async {
+    final client = _client;
+    if (client == null) return;
     try {
       final uri = Uri.parse('http://127.0.0.1:$daemonPort/telemetry/batch');
-      final request = await _client
-          .postUrl(uri)
-          .timeout(const Duration(seconds: 5));
+      final request =
+          await client.postUrl(uri).timeout(const Duration(seconds: 5));
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(batch.toJson()));
       final response = await request.close();

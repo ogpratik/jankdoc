@@ -17,7 +17,8 @@ final class OutputValidator {
         .toSet();
 
     final citedFile = diagnosis.rootCause.file!;
-    final fileIsReal = knownFiles.any((f) => f.endsWith(citedFile) || citedFile.endsWith(f));
+    final fileIsReal =
+        knownFiles.any((f) => f.endsWith(citedFile) || citedFile.endsWith(f));
 
     if (!fileIsReal) {
       return diagnosis.copyWith(

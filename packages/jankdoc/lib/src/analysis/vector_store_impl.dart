@@ -78,7 +78,8 @@ final class InMemoryVectorStore implements VectorStore {
     if (!await file.exists()) return;
 
     try {
-      final json = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
+      final json =
+          jsonDecode(await file.readAsString()) as Map<String, dynamic>;
       final entries = (json['entries'] as List).cast<Map<String, dynamic>>();
       for (final e in entries) {
         final vector = (e['vector'] as List).cast<double>();

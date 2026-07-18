@@ -20,7 +20,6 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:jankdoc_core/jankdoc_core.dart';
-import 'package:jankdoc_rules/jankdoc_rules.dart';
 
 // Eval fixtures are in jankdoc_eval — use a local import when available.
 // For the compiled binary distribution, the eval harness is a dev dependency.
@@ -28,10 +27,14 @@ import 'package:jankdoc_rules/jankdoc_rules.dart';
 Future<void> main(List<String> args) async {
   final parser = ArgParser()
     ..addOption('input', abbr: 'i', help: 'Path to telemetry JSON input file.')
-    ..addOption('output', abbr: 'o', help: 'Path to write SARIF output (default: stdout).')
-    ..addFlag('eval', help: 'Run built-in eval fixture suite.', negatable: false)
-    ..addFlag('fail-on-warning', help: 'Exit 1 on MEDIUM severity too.', negatable: false)
-    ..addFlag('verbose', abbr: 'v', help: 'Print matched rules to stderr.', negatable: false)
+    ..addOption('output',
+        abbr: 'o', help: 'Path to write SARIF output (default: stdout).')
+    ..addFlag('eval',
+        help: 'Run built-in eval fixture suite.', negatable: false)
+    ..addFlag('fail-on-warning',
+        help: 'Exit 1 on MEDIUM severity too.', negatable: false)
+    ..addFlag('verbose',
+        abbr: 'v', help: 'Print matched rules to stderr.', negatable: false)
     ..addFlag('help', abbr: 'h', negatable: false);
 
   final ArgResults results;
@@ -99,7 +102,8 @@ Future<void> main(List<String> args) async {
 
   if (outputPath != null) {
     await File(outputPath).writeAsString(output);
-    stderr.writeln('[JankDoc] SARIF written to $outputPath (${diagnoses.length} findings)');
+    stderr.writeln(
+        '[JankDoc] SARIF written to $outputPath (${diagnoses.length} findings)');
   } else {
     stdout.writeln(output);
   }
@@ -120,7 +124,8 @@ Future<List<TelemetryBatch>?> _loadBatches(String? inputPath) async {
     } else if (!stdin.hasTerminal) {
       raw = await stdin.transform(utf8.decoder).join();
     } else {
-      stderr.writeln('Error: provide --input <file> or pipe telemetry JSON via stdin.');
+      stderr.writeln(
+          'Error: provide --input <file> or pipe telemetry JSON via stdin.');
       return null;
     }
   } catch (e) {
@@ -138,7 +143,8 @@ Future<List<TelemetryBatch>?> _loadBatches(String? inputPath) async {
     } else if (decoded is Map<String, dynamic>) {
       return [TelemetryBatch.fromJson(decoded)];
     } else {
-      stderr.writeln('Error: input must be a TelemetryBatch JSON object or array.');
+      stderr.writeln(
+          'Error: input must be a TelemetryBatch JSON object or array.');
       return null;
     }
   } catch (e) {
@@ -177,7 +183,8 @@ Future<void> _runEvalMode({required bool verbose}) async {
     }
   }
 
-  stderr.writeln('[JankDoc] Eval: $passed passed, $failed failed / ${fixtures.length} total');
+  stderr.writeln(
+      '[JankDoc] Eval: $passed passed, $failed failed / ${fixtures.length} total');
   exit(failed > 0 ? 1 : 0);
 }
 
@@ -188,7 +195,8 @@ Map<String, dynamic> _buildSarif(
   List<Rule> rules,
 ) {
   return {
-    '\$schema': 'https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json',
+    '\$schema':
+        'https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json',
     'version': '2.1.0',
     'runs': [
       {
@@ -261,10 +269,8 @@ String _sarifLevel(Severity s) => switch (s) {
       Severity.low => 'note',
     };
 
-String _camelCase(String kebab) => kebab
-    .split('-')
-    .map((w) => w[0].toUpperCase() + w.substring(1))
-    .join();
+String _camelCase(String kebab) =>
+    kebab.split('-').map((w) => w[0].toUpperCase() + w.substring(1)).join();
 
 String _humanName(String patternId) => switch (patternId) {
       'animated-builder-rebuild-storm' => 'AnimatedBuilder Rebuild Storm',
@@ -285,8 +291,10 @@ String _humanName(String patternId) => switch (patternId) {
       'platform-channel-ui-block' => 'Platform Channel Blocking UI',
       'impeller-scroll-jank-ios' => 'Impeller Scroll Jank (iOS)',
       'impeller-powervr-rogue-spike' => 'Impeller PowerVR Rogue Spike',
-      'impeller-elevation-rounded-corners' => 'Impeller Elevation + Rounded Corners',
-      'impeller-custom-scroll-view-android' => 'Impeller CustomScrollView Android',
+      'impeller-elevation-rounded-corners' =>
+        'Impeller Elevation + Rounded Corners',
+      'impeller-custom-scroll-view-android' =>
+        'Impeller CustomScrollView Android',
       'impeller-general-regression' => 'Impeller General Regression',
       'listview-missing-extent' => 'ListView Missing itemExtent',
       'listview-non-lazy' => 'Non-Lazy ListView',
@@ -372,6 +380,7 @@ List<_EvalFixture> _ciFixtures() {
   }) =>
       TelemetryBatch(
         sessionId: 'ci-eval',
+        projectFingerprint: 'ci000000000000000',
         windowStartMs: 0,
         windowEndMs: 33,
         jankFrames: [f],

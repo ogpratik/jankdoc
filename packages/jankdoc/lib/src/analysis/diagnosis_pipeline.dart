@@ -1,7 +1,4 @@
-import 'dart:convert';
-
 import 'package:jankdoc_core/jankdoc_core.dart';
-import 'package:jankdoc_rules/jankdoc_rules.dart';
 import 'package:uuid/uuid.dart';
 
 import 'ollama_provider.dart';
@@ -74,7 +71,10 @@ final class DiagnosisPipeline {
 
     final raw = await llmProvider.diagnose(request);
     final validated = validator.validate(raw, batch);
-    final withRecurrence = await _annotateRecurrence(validated);
+    final withRecurrence = await _annotateRecurrence(
+      validated,
+      projectFingerprint: batch.projectFingerprint,
+    );
 
     await sessionRepo.saveDiagnosis(withRecurrence);
     yield withRecurrence;
@@ -94,7 +94,7 @@ final class DiagnosisPipeline {
     );
 
     final recurrence = await sessionRepo.countRecurrences(
-      projectFingerprint: batch.sessionId, // TODO: pass project fingerprint
+      projectFingerprint: batch.projectFingerprint,
       patternId: rule.patternId,
     );
 
@@ -121,9 +121,12 @@ final class DiagnosisPipeline {
     );
   }
 
-  Future<Diagnosis> _annotateRecurrence(Diagnosis d) async {
+  Future<Diagnosis> _annotateRecurrence(
+    Diagnosis d, {
+    required String projectFingerprint,
+  }) async {
     final count = await sessionRepo.countRecurrences(
-      projectFingerprint: d.sessionId,
+      projectFingerprint: projectFingerprint,
       patternId: d.patternId,
     );
     return count > 0 ? d.copyWith(recurrenceCount: count) : d;
@@ -131,13 +134,34 @@ final class DiagnosisPipeline {
 
   String _buildQueryText(TelemetryBatch batch) {
     final frame = batch.worstFrame;
+    // Include enough per-case signal (widget types, function names, file
+    // paths) so semantically-distinct cases produce semantically-distinct
+    // embeddings. The prior version was too generic: every case's embedding
+    // clustered around a "Flutter perf issue" centroid, so RAG kept
+    // retrieving the same nearest neighbor.
+    final widgetTypes = frame.uiStack
+        .map((s) => s.widgetType)
+        .whereType<String>()
+        .toSet()
+        .join(', ');
+    final userFiles = frame.uiStack
+        .where((s) => s.isUserCode)
+        .map((s) => s.file)
+        .toSet()
+        .take(3)
+        .join(', ');
+    final threadDominance = frame.rasterThreadMs > frame.uiThreadMs
+        ? 'raster-thread bound'
+        : 'ui-thread bound';
     final parts = <String>[
-      'Flutter performance issue:',
+      'Flutter performance issue — $threadDominance:',
       'UI thread: ${frame.uiThreadMs.toStringAsFixed(1)}ms',
       'Raster thread: ${frame.rasterThreadMs.toStringAsFixed(1)}ms',
+      if (widgetTypes.isNotEmpty) 'Widgets: $widgetTypes',
       if (frame.hasRebuildData)
         'Rebuilt widgets: ${frame.rebuildCounts.entries.take(5).map((e) => '${e.key}×${e.value}').join(', ')}',
-      'Stack: ${frame.uiStack.take(3).map((s) => s.function).join(' → ')}',
+      'Stack: ${frame.uiStack.take(5).map((s) => s.function).join(' → ')}',
+      if (userFiles.isNotEmpty) 'Files: $userFiles',
       if (batch.deviceInfo.impellerEnabled) 'Impeller enabled',
       'Platform: ${batch.deviceInfo.platform.name}',
     ];
@@ -204,8 +228,7 @@ ListTile(
             summary: 'Move JSON decoding to an isolate with compute().',
             expectedImprovementMs: (8.0, 20.0),
             codeBefore: "final data = jsonDecode(response.body);",
-            codeAfter:
-                "final data = await compute(jsonDecode, response.body);",
+            codeAfter: "final data = await compute(jsonDecode, response.body);",
           ),
         'raster-overdraw-opacity' => const Fix(
             summary: 'Replace Opacity with FadeTransition for animated fades.',

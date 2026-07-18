@@ -11,24 +11,26 @@ import 'package:sqlite3/sqlite3.dart' hide Session;
 /// Uses SQLite via package:sqlite3. Enables cross-session memory:
 /// recurrence counts, CI baseline deltas, and pattern trend analysis.
 final class SessionRepository {
-  SessionRepository() {
-    _db = _openDatabase();
+  SessionRepository({String? overrideDbPath})
+      : _resolvedDbPath = overrideDbPath ?? _defaultDbPath {
+    _db = _openDatabase(_resolvedDbPath);
     _migrate(_db);
   }
 
   late final Database _db;
+  final String _resolvedDbPath;
 
-  static String get _dbPath {
+  static String get _defaultDbPath {
     final home = Platform.environment['HOME'] ??
         Platform.environment['USERPROFILE'] ??
         '.';
     return '$home/.jankdoc/sessions.db';
   }
 
-  static Database _openDatabase() {
-    final file = File(_dbPath);
+  static Database _openDatabase(String path) {
+    final file = File(path);
     file.parent.createSync(recursive: true);
-    return sqlite3.open(_dbPath);
+    return sqlite3.open(path);
   }
 
   static void _migrate(Database db) {
@@ -168,7 +170,8 @@ final class SessionRepository {
         deviceInfo: DeviceInfo.fromJson(
           jsonDecode(row['device_info'] as String) as Map<String, dynamic>,
         ),
-        startedAt: DateTime.fromMillisecondsSinceEpoch(row['started_at'] as int),
+        startedAt:
+            DateTime.fromMillisecondsSinceEpoch(row['started_at'] as int),
         endedAt: row['ended_at'] != null
             ? DateTime.fromMillisecondsSinceEpoch(row['ended_at'] as int)
             : null,

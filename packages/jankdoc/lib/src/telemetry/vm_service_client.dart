@@ -50,9 +50,7 @@ final class VmServiceClient {
           )
           .toString();
 
-      final service = await vm_io
-          .vmServiceConnectUri(wsUri)
-          .timeout(timeout);
+      final service = await vm_io.vmServiceConnectUri(wsUri).timeout(timeout);
 
       // Discover the main isolate
       final vmRef = await service.getVM().timeout(timeout);

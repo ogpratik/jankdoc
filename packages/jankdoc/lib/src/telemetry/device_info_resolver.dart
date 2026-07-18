@@ -45,7 +45,7 @@ abstract final class DeviceInfoResolver {
       flutterVersion: flutterVersion,
       dartVersion: dartVersion,
       impellerEnabled: impellerEnabled,
-      gpuName: null,        // Not accessible from pure Dart
+      gpuName: null, // Not accessible from pure Dart
       physicalMemoryMb: null,
       cpuCores: _safeInt(() => Platform.numberOfProcessors),
     );

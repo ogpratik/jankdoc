@@ -117,7 +117,8 @@ final class TelemetryCollector {
     _rebuildTracker.start();
     _sender.start();
     SchedulerBinding.instance.addTimingsCallback(_onFrameTimings);
-    _log('Telemetry collector started (target: ${_targetFps.toStringAsFixed(0)}fps, '
+    _log(
+        'Telemetry collector started (target: ${_targetFps.toStringAsFixed(0)}fps, '
         'budget: ${_budgetMs.toStringAsFixed(1)}ms)');
   }
 
@@ -174,11 +175,9 @@ final class TelemetryCollector {
     List<StackFrame> uiStack = const [];
 
     if (_vmClient != null) {
-      final startUs =
-          timing.timestampInMicroseconds(FramePhase.buildStart);
-      final endUs =
-          timing.timestampInMicroseconds(FramePhase.rasterFinish);
-      uiStack = await _vmClient!.getCpuStackFrames(startUs, endUs);
+      final startUs = timing.timestampInMicroseconds(FramePhase.buildStart);
+      final endUs = timing.timestampInMicroseconds(FramePhase.rasterFinish);
+      uiStack = await _vmClient.getCpuStackFrames(startUs, endUs);
     }
 
     final frame = JankFrame(
