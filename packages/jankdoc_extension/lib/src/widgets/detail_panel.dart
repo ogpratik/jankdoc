@@ -74,9 +74,9 @@ class _DiagnosisHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: sevColor.withOpacity(isDark ? 0.08 : 0.05),
+        color: sevColor.withValues(alpha: isDark ? 0.08 : 0.05),
         border: Border(
-          bottom: BorderSide(color: sevColor.withOpacity(0.2)),
+          bottom: BorderSide(color: sevColor.withValues(alpha: 0.2)),
         ),
       ),
       child: Column(
@@ -111,7 +111,7 @@ class _DiagnosisHeader extends StatelessWidget {
             style: TextStyle(
               fontSize: 11,
               fontFamily: 'monospace',
-              color: theme.colorScheme.onSurface.withOpacity(0.4),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
             ),
           ),
         ],
@@ -155,7 +155,7 @@ class _RootCauseSection extends StatelessWidget {
               fontSize: 10,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.0,
-              color: theme.colorScheme.onSurface.withOpacity(0.45),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
             ),
           ),
           const SizedBox(height: 6),
@@ -177,7 +177,7 @@ class _RootCauseSection extends StatelessWidget {
                     : const Color(0xFFF5F5F5),
                 borderRadius: BorderRadius.circular(4),
                 border: Border.all(
-                  color: theme.dividerColor.withOpacity(0.5),
+                  color: theme.dividerColor.withValues(alpha: 0.5),
                   width: 0.5,
                 ),
               ),
@@ -186,7 +186,7 @@ class _RootCauseSection extends StatelessWidget {
                   Icon(
                     Icons.code_outlined,
                     size: 13,
-                    color: theme.colorScheme.onSurface.withOpacity(0.5),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -211,7 +211,7 @@ class _RootCauseSection extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color:
-                            theme.colorScheme.primary.withOpacity(0.1),
+                            theme.colorScheme.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(3),
                       ),
                       child: Text(
@@ -250,7 +250,7 @@ class _ExplanationSection extends StatelessWidget {
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1.0,
-                color: theme.colorScheme.onSurface.withOpacity(0.45),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
               ),
             ),
             const SizedBox(height: 6),
@@ -258,7 +258,7 @@ class _ExplanationSection extends StatelessWidget {
               diagnosis.explanation,
               style: TextStyle(
                 fontSize: 13,
-                color: theme.colorScheme.onSurface.withOpacity(0.88),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.88),
                 height: 1.5,
               ),
             ),
@@ -328,7 +328,7 @@ class _MetaItem extends StatelessWidget {
             '$label: ',
             style: TextStyle(
               fontSize: 11,
-              color: theme.colorScheme.onSurface.withOpacity(0.4),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
             ),
           ),
           Text(
@@ -336,7 +336,7 @@ class _MetaItem extends StatelessWidget {
             style: TextStyle(
               fontSize: 11,
               fontFamily: 'monospace',
-              color: theme.colorScheme.onSurface.withOpacity(0.6),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
         ],
@@ -355,14 +355,14 @@ class _NothingSelected extends StatelessWidget {
             Icon(
               Icons.touch_app_outlined,
               size: 36,
-              color: theme.colorScheme.onSurface.withOpacity(0.15),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.15),
             ),
             const SizedBox(height: 12),
             Text(
               'Select a diagnosis',
               style: TextStyle(
                 fontSize: 13,
-                color: theme.colorScheme.onSurface.withOpacity(0.3),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
               ),
             ),
           ],
@@ -382,9 +382,9 @@ class _SeverityChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withOpacity(0.4), width: 0.5),
+        border: Border.all(color: color.withValues(alpha: 0.4), width: 0.5),
       ),
       child: Text(
         severity.name.toUpperCase(),
@@ -414,7 +414,7 @@ class _RecurrenceBadge extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
         decoration: BoxDecoration(
-          color: const Color(0xFFEF9A9A).withOpacity(0.15),
+          color: const Color(0xFFEF9A9A).withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Row(
@@ -453,14 +453,14 @@ class _TierIndicator extends StatelessWidget {
           Icon(
             isRule ? Icons.rule_outlined : Icons.psychology_outlined,
             size: 12,
-            color: theme.colorScheme.onSurface.withOpacity(0.4),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
           ),
           const SizedBox(width: 4),
           Text(
             isRule ? 'Rule-tier' : 'LLM-tier',
             style: TextStyle(
               fontSize: 11,
-              color: theme.colorScheme.onSurface.withOpacity(0.45),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
             ),
           ),
         ],

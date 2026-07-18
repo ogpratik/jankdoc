@@ -100,7 +100,7 @@ class DiagnosisCard extends StatelessWidget {
                         Icon(
                           Icons.code,
                           size: 10,
-                          color: theme.colorScheme.onSurface.withOpacity(0.5),
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                         ),
                         const SizedBox(width: 3),
                         Flexible(
@@ -109,7 +109,7 @@ class DiagnosisCard extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 11,
                               fontFamily: 'monospace',
-                              color: theme.colorScheme.onSurface.withOpacity(0.65),
+                              color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -122,7 +122,7 @@ class DiagnosisCard extends StatelessWidget {
                             diagnosis.rootCause.description,
                             style: TextStyle(
                               fontSize: 11,
-                              color: theme.colorScheme.onSurface.withOpacity(0.55),
+                              color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -141,7 +141,7 @@ class DiagnosisCard extends StatelessWidget {
                           _timeFormat.format(diagnosis.createdAt!),
                           style: TextStyle(
                             fontSize: 10,
-                            color: theme.colorScheme.onSurface.withOpacity(0.35),
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
                           ),
                         ),
                     ],
@@ -211,7 +211,7 @@ class _TierBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(3),
       ),
       child: Text(
@@ -236,7 +236,7 @@ class _RecurrenceBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
       decoration: BoxDecoration(
-        color: const Color(0xFFEF9A9A).withOpacity(0.2),
+        color: const Color(0xFFEF9A9A).withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(3),
       ),
       child: Row(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'providers/daemon_provider.dart';
 import 'providers/diagnosis_provider.dart';
 import 'widgets/detail_panel.dart';
 import 'widgets/diagnosis_list_panel.dart';
@@ -48,6 +49,7 @@ class _JankDocExtensionAppState extends ConsumerState<JankDocExtensionApp> {
       body: Column(
         children: [
           const StatusIndicator(),
+          const _DaemonUnreachableBanner(),
           Expanded(
             child: collapsed
                 ? _CollapsedLayout()
@@ -62,6 +64,49 @@ class _JankDocExtensionAppState extends ConsumerState<JankDocExtensionApp> {
                       });
                     },
                   ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Daemon-unreachable banner ─────────────────────────────────────────────────
+
+/// Shown after 30 s of failed /health checks — tells the user exactly what
+/// to fix rather than leaving them with a spinning amber dot.
+class _DaemonUnreachableBanner extends ConsumerWidget {
+  const _DaemonUnreachableBanner();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final timedOut = ref.watch(daemonTimedOutProvider).valueOrNull ?? false;
+    if (!timedOut) return const SizedBox.shrink();
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: double.infinity,
+      color: isDark ? const Color(0xFF3E2723) : const Color(0xFFFFF3E0),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.warning_amber_rounded,
+            size: 14,
+            color: Color(0xFFE65100),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              'Daemon not reachable. '
+              "Did you call JankDoc.attach() before runApp()?",
+              style: TextStyle(
+                fontSize: 11,
+                color: isDark
+                    ? const Color(0xFFFFCCBC)
+                    : const Color(0xFF4E2600),
+              ),
+            ),
           ),
         ],
       ),
@@ -165,7 +210,7 @@ class _CollapsedLayout extends ConsumerWidget {
                                 color: Theme.of(context)
                                     .colorScheme
                                     .onSurface
-                                    .withOpacity(0.2),
+                                    .withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(2),
                               ),
                             ),
@@ -181,7 +226,7 @@ class _CollapsedLayout extends ConsumerWidget {
                             color: Theme.of(context)
                                 .colorScheme
                                 .onSurface
-                                .withOpacity(0.4),
+                                .withValues(alpha: 0.4),
                           ),
                         ),
                       ],

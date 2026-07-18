@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:jankdoc_core/jankdoc_core.dart';
+import 'package:meta/meta.dart';
 
 /// HTTP client for the JankDoc Analysis Daemon (port 9101 by default).
 ///
@@ -13,6 +14,10 @@ import 'package:jankdoc_core/jankdoc_core.dart';
 /// Create one instance per discovered daemon URL and [dispose] when done.
 final class DaemonClient {
   DaemonClient(this.baseUrl) : _client = http.Client();
+
+  /// Constructor for unit testing — injects a custom [http.Client] (e.g. [MockClient]).
+  @visibleForTesting
+  DaemonClient.forTesting(this.baseUrl, http.Client client) : _client = client;
 
   final String baseUrl;
   final http.Client _client;
@@ -81,13 +86,18 @@ final class DaemonClient {
     var backoff = const Duration(seconds: 1);
     const maxBackoff = Duration(seconds: 30);
 
-    while (true) {
+    // Guarded reconnect loop. `dispose()` flips `_disposed` so the generator
+    // exits at the next await point instead of retrying the SSE handshake
+    // forever — the leak that used to run under both prod DevTools sessions
+    // and the test suite (`diagnosisStream()` tests hung indefinitely).
+    while (!_disposed) {
       try {
         final request = http.Request(
           'GET',
           Uri.parse('$baseUrl/diagnoses/stream'),
         );
         final response = await _client.send(request);
+        if (_disposed) return;
 
         if (response.statusCode != 200) {
           throw StateError('SSE endpoint returned ${response.statusCode}');
@@ -98,6 +108,7 @@ final class DaemonClient {
         await for (final line in response.stream
             .transform(utf8.decoder)
             .transform(const LineSplitter())) {
+          if (_disposed) return;
           if (!line.startsWith('data: ')) continue;
           final payload = line.substring(6).trim();
           if (payload.isEmpty || payload == '[DONE]') continue;
@@ -109,14 +120,21 @@ final class DaemonClient {
           }
         }
       } catch (_) {
+        if (_disposed) return;
         await Future<void>.delayed(backoff);
+        if (_disposed) return;
         backoff = backoff * 2;
         if (backoff > maxBackoff) backoff = maxBackoff;
       }
     }
   }
 
-  void dispose() => _client.close();
+  bool _disposed = false;
+
+  void dispose() {
+    _disposed = true;
+    _client.close();
+  }
 
   static void _checkStatus(http.Response response) {
     if (response.statusCode >= 400) {

@@ -28,7 +28,7 @@ class EmptyState extends ConsumerWidget {
                 _icon(state),
                 key: ValueKey(state),
                 size: 40,
-                color: theme.colorScheme.onSurface.withOpacity(0.2),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
               ),
             ),
             const SizedBox(height: 16),
@@ -37,7 +37,7 @@ class EmptyState extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: theme.colorScheme.onSurface.withOpacity(0.5),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
               ),
               textAlign: TextAlign.center,
             ),
@@ -46,7 +46,7 @@ class EmptyState extends ConsumerWidget {
               _body(state),
               style: TextStyle(
                 fontSize: 12,
-                color: theme.colorScheme.onSurface.withOpacity(0.35),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
                 height: 1.5,
               ),
               textAlign: TextAlign.center,
@@ -96,7 +96,7 @@ class _CodeSnippet extends StatelessWidget {
         color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F5F5),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: theme.colorScheme.primary.withOpacity(0.25),
+          color: theme.colorScheme.primary.withValues(alpha: 0.25),
           width: 0.5,
         ),
       ),
@@ -133,7 +133,7 @@ class _CodeSnippet extends StatelessWidget {
   static TextStyle _codeStyle(ThemeData t) => TextStyle(
         fontSize: 12,
         fontFamily: 'monospace',
-        color: t.colorScheme.onSurface.withOpacity(0.75),
+        color: t.colorScheme.onSurface.withValues(alpha: 0.75),
         height: 1.6,
       );
 }

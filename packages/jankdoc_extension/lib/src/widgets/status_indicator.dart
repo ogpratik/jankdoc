@@ -80,7 +80,7 @@ class StatusIndicator extends ConsumerWidget {
               '${stats.total} diagnosis${stats.total != 1 ? 'es' : ''}',
               style: TextStyle(
                 fontSize: 11,
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
           ],
@@ -89,7 +89,7 @@ class StatusIndicator extends ConsumerWidget {
             'v1.0.0',
             style: TextStyle(
               fontSize: 10,
-              color: theme.colorScheme.onSurface.withOpacity(0.35),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
             ),
           ),
         ],
@@ -153,7 +153,7 @@ class _ConnectionDotState extends State<_ConnectionDot>
           height: 7,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: color.withOpacity(animate ? _opacity.value : 1.0),
+            color: color.withValues(alpha: animate ? _opacity.value : 1.0),
           ),
         );
       },
@@ -190,13 +190,13 @@ class _Chip extends StatelessWidget {
   Widget build(BuildContext context) => Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: theme.colorScheme.onSurface.withOpacity(0.5)),
+          Icon(icon, size: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
           const SizedBox(width: 4),
           Text(
             label,
             style: TextStyle(
               fontSize: 11,
-              color: theme.colorScheme.onSurface.withOpacity(0.7),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               fontFamily: 'monospace',
             ),
           ),
@@ -218,9 +218,9 @@ class _SeverityPill extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.15),
+          color: color.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(3),
-          border: Border.all(color: color.withOpacity(0.4), width: 0.5),
+          border: Border.all(color: color.withValues(alpha: 0.4), width: 0.5),
         ),
         child: Text(
           '$count $label',

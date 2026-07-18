@@ -139,10 +139,10 @@ class _SectionHeader extends StatelessWidget {
         color: theme.colorScheme.surface,
         border: Border(
           top: BorderSide(
-            color: theme.dividerColor.withOpacity(0.5),
+            color: theme.dividerColor.withValues(alpha: 0.5),
           ),
           bottom: BorderSide(
-            color: theme.dividerColor.withOpacity(0.5),
+            color: theme.dividerColor.withValues(alpha: 0.5),
           ),
         ),
       ),
@@ -152,7 +152,7 @@ class _SectionHeader extends StatelessWidget {
           fontSize: 10,
           fontWeight: FontWeight.w700,
           letterSpacing: 1.0,
-          color: theme.colorScheme.onSurface.withOpacity(0.5),
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
         ),
       ),
     );
@@ -173,10 +173,10 @@ class _ImprovementBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFF4CAF50).withOpacity(0.12),
+        color: const Color(0xFF4CAF50).withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
-          color: const Color(0xFF4CAF50).withOpacity(0.4),
+          color: const Color(0xFF4CAF50).withValues(alpha: 0.4),
           width: 0.5,
         ),
       ),
@@ -220,7 +220,7 @@ class _CommandChip extends StatelessWidget {
         color: isDark ? const Color(0xFF1A1A2E) : const Color(0xFFF0F0FF),
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
-          color: theme.colorScheme.primary.withOpacity(0.3),
+          color: theme.colorScheme.primary.withValues(alpha: 0.3),
           width: 0.5,
         ),
       ),
@@ -247,7 +247,7 @@ class _CommandChip extends StatelessWidget {
             child: Icon(
               Icons.copy_outlined,
               size: 13,
-              color: theme.colorScheme.onSurface.withOpacity(0.4),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
             ),
           ),
         ],
@@ -279,10 +279,10 @@ class _TabButton extends StatelessWidget {
         duration: const Duration(milliseconds: 120),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: active ? color.withOpacity(0.15) : Colors.transparent,
+          color: active ? color.withValues(alpha: 0.15) : Colors.transparent,
           borderRadius: BorderRadius.circular(4),
           border: Border.all(
-            color: active ? color.withOpacity(0.5) : Colors.transparent,
+            color: active ? color.withValues(alpha: 0.5) : Colors.transparent,
             width: 0.5,
           ),
         ),
@@ -293,7 +293,7 @@ class _TabButton extends StatelessWidget {
             fontWeight: active ? FontWeight.w600 : FontWeight.w400,
             color: active
                 ? color
-                : theme.colorScheme.onSurface.withOpacity(0.5),
+                : theme.colorScheme.onSurface.withValues(alpha: 0.5),
           ),
         ),
       ),
@@ -318,8 +318,8 @@ class _CodeBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     final bg = isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF8F8F8);
     final borderColor = isAfter
-        ? const Color(0xFF4CAF50).withOpacity(0.3)
-        : const Color(0xFFE53935).withOpacity(0.3);
+        ? const Color(0xFF4CAF50).withValues(alpha: 0.3)
+        : const Color(0xFFE53935).withValues(alpha: 0.3);
 
     return Container(
       width: double.infinity,
@@ -338,7 +338,7 @@ class _CodeBlock extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontFamily: 'monospace',
-                color: theme.colorScheme.onSurface.withOpacity(0.88),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.88),
                 height: 1.5,
               ),
             ),
@@ -353,7 +353,7 @@ class _CodeBlock extends StatelessWidget {
                 child: Icon(
                   Icons.copy_outlined,
                   size: 13,
-                  color: theme.colorScheme.onSurface.withOpacity(0.35),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
                 ),
               ),
             ),
@@ -378,7 +378,7 @@ class _SourceLink extends StatelessWidget {
           Icon(
             Icons.open_in_new,
             size: 11,
-            color: theme.colorScheme.primary.withOpacity(0.7),
+            color: theme.colorScheme.primary.withValues(alpha: 0.7),
           ),
           const SizedBox(width: 5),
           Expanded(
@@ -388,7 +388,7 @@ class _SourceLink extends StatelessWidget {
                 fontSize: 11,
                 color: theme.colorScheme.primary,
                 decoration: TextDecoration.underline,
-                decorationColor: theme.colorScheme.primary.withOpacity(0.4),
+                decorationColor: theme.colorScheme.primary.withValues(alpha: 0.4),
               ),
             ),
           ),

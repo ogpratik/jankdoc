@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:jankdoc_core/jankdoc_core.dart';
 
 import '../providers/diagnosis_provider.dart';
 import 'diagnosis_card.dart';
@@ -102,7 +101,7 @@ class _FilterBar extends ConsumerWidget {
                 ref.read(diagnosisNotifierProvider.notifier).clear();
                 ref.read(selectedDiagnosisProvider.notifier).state = null;
               },
-              color: theme.colorScheme.onSurface.withOpacity(0.4),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
               visualDensity: VisualDensity.compact,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
@@ -147,12 +146,12 @@ class _FilterChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
           color: isActive
-              ? theme.colorScheme.primary.withOpacity(0.15)
+              ? theme.colorScheme.primary.withValues(alpha: 0.15)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(4),
           border: Border.all(
             color: isActive
-                ? theme.colorScheme.primary.withOpacity(0.5)
+                ? theme.colorScheme.primary.withValues(alpha: 0.5)
                 : Colors.transparent,
             width: 0.5,
           ),
@@ -167,7 +166,7 @@ class _FilterChip extends StatelessWidget {
                 fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
                 color: isActive
                     ? theme.colorScheme.primary
-                    : theme.colorScheme.onSurface.withOpacity(0.55),
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.55),
               ),
             ),
             if (count != null) ...[
@@ -176,8 +175,8 @@ class _FilterChip extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                 decoration: BoxDecoration(
                   color: isActive
-                      ? theme.colorScheme.primary.withOpacity(0.2)
-                      : theme.colorScheme.onSurface.withOpacity(0.08),
+                      ? theme.colorScheme.primary.withValues(alpha: 0.2)
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -187,7 +186,7 @@ class _FilterChip extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     color: isActive
                         ? theme.colorScheme.primary
-                        : theme.colorScheme.onSurface.withOpacity(0.45),
+                        : theme.colorScheme.onSurface.withValues(alpha: 0.45),
                   ),
                 ),
               ),
