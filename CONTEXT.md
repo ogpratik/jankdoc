@@ -41,12 +41,52 @@ A composable predicate over a Telemetry Batch. Conditions are composed with `And
 _Avoid_: "filter", "check", "signal"
 
 **Knowledge Base (KB)**:
-The curated corpus of Flutter performance antipatterns. Each KB Entry is a YAML-front-matter + Markdown file with `id`, `category`, `severity`, `flutter_version_range`, `detection_signals`, and `sources` citing primary Flutter docs or GitHub issues. Seeded with ~50 entries at v1.
-_Avoid_: "training data", "dataset", "prompt library", "pattern library"
+The curated corpus of Flutter performance antipatterns. Versioned independently of the `jankdoc` package, distributed as KB Bundles via GitHub Releases, and hot-reloaded into the daemon without restart. Each KB Entry is a YAML-source file in the `jankdoc-kb` repository with `id`, `category`, `severity`, `flutter_version_range`, `detection_signals`, and `sources` citing primary Flutter docs or GitHub issues.
+_Avoid_: "training data", "dataset", "prompt library", "pattern library", "static knowledge"
 
 **KB Entry**:
-A single antipattern document in the Knowledge Base. The atomic unit of diagnostic knowledge. Each entry maps to one or more Rules (for the pre-filter) and one or more embedding chunks (for RAG).
+A single antipattern document in the Knowledge Base. The atomic unit of diagnostic knowledge. Each entry contributes one or more Rules to the Rule Pre-filter and one or more pre-computed embedding vectors to the Vector Store. Every KB Entry must cite a primary source and have a corresponding eval test app before it can be merged.
 _Avoid_: "pattern", "template", "document"
+
+**KB Bundle**:
+A single versioned `.jankdoc-kb` artifact (gzipped JSON) containing all KB Entries, their serialised Rules, and pre-computed embeddings for the bundle's KB Version. Distributed as a GitHub Release asset. The daemon loads and hot-reloads KB Bundles without restarting.
+_Avoid_: "KB download", "KB package", "rules file"
+
+**KB Version**:
+Semantic version of the Knowledge Base (`major.minor.patch`), independent of the `jankdoc` package version. A new KB Version ships whenever a KB Entry is added, updated, or deprecated — without requiring a `jankdoc` package release.
+_Avoid_: "plugin version", "rules version"
+
+**KB Registry**:
+The GitHub Releases page of the `jankdoc-kb` repository. The canonical source of versioned KB Bundles. The daemon resolves the latest compatible bundle via the GitHub Releases API. No custom server, no CDN.
+_Avoid_: "KB server", "update server", "KB CDN"
+
+**KB Cache**:
+The local directory `~/.jankdoc/kb/` where downloaded KB Bundles are stored. Multiple versions coexist. The daemon always uses the highest cached KB Version compatible with the running Flutter version. Works fully offline once a bundle is cached.
+_Avoid_: "KB directory", "local KB"
+
+**KB Hot-reload**:
+The daemon's ability to swap to a new KB Bundle atomically without restarting. In-flight analysis requests complete against the previous KB Version; new requests use the new version. Triggered 60 seconds after daemon startup if a newer KB Version is available in the KB Registry.
+_Avoid_: "live update", "KB refresh", "hot update"
+
+**Promotion Channel**:
+The lifecycle stage of a KB Entry in the public KB. Four channels exist: `experimental`, `candidate`, `stable`, and `local`. Each has a distinct CI contract. Entries move through public channels via explicit maintainer promotion — never automatically. The default channel for all users is `stable`.
+_Avoid_: "tier", "stage", "release track"
+
+**Experimental Channel**:
+The first public promotion channel. New KB Entries land here. CI validates schema and source citation only — advisory, never blocking (<30s). Users opt in via `kb_channel: experimental`. Experimental bundle = stable + candidate + experimental entries. Promise: "This pattern is real and cited. The rule may be wrong."
+_Avoid_: "canary", "unstable", "draft"
+
+**Candidate Channel**:
+The second public promotion channel. Entries promoted from experimental. Requires an eval test app. CI is threshold-based: blocks on missing test app or compile failure, blocks on accuracy <0.60, advisory on fix effectiveness <0.50. (~2–3 min CI). Users opt in via `kb_channel: candidate`. Candidate bundle = stable + candidate entries. Promise: "This rule works on a controlled reproduction. May not generalise."
+_Avoid_: "beta", "preview", "release candidate"
+
+**Stable Channel**:
+The third public promotion channel and the default for all users. Full CI gate — accuracy ≥0.75, fix effectiveness ≥0.65, full regression suite, no exceptions. **CI blocks unconditionally on any failure.** (~10–15 min CI). No configuration needed. Promise: "Validated, no known regressions, ships to everyone."
+_Avoid_: "production", "release", "main"
+
+**Local Channel**:
+A private, unrestricted channel on the developer's machine. KB Entries live under `.jankdoc/local-kb/` in the project directory. No CI gate, no source requirement, no accuracy threshold. Never uploaded or shared. Local entries with the same `id` as a public entry override the public entry. Always additive on top of the user's configured public channel.
+_Avoid_: "custom channel", "private KB", "override layer"
 
 **Diagnosis**:
 The structured output JankDoc produces for one analysis request: `{ session_id, frame_ts, pattern_id, confidence, root_cause: { file, line, widget }, explanation, fix, sources, tier }`. The unit of value the user sees. `tier` is either `"rule"` (pre-filter) or `"llm"`.
@@ -117,12 +157,16 @@ _Avoid_: "config file", "settings", "jankdoc config"
 
 ## Architecture principles
 
-- **Rule-first, LLM-second.** The pre-filter is the primary trust mechanism. The LLM handles the long tail.
-- **Pure Dart in the runtime path.** No Python, no Rust, no native extensions in v1. The daemon is `dart compile exe`.
+- **Deterministic first.** The Rule Pre-filter always produces the same Diagnosis for the same TelemetryBatch. The LLM Tier runs at temperature=0, seed=42, with fixed RAG context. Reproducibility is a feature, not an accident.
+- **Curated over crowdsourced.** Every KB Entry cites a primary source. No pattern ships without a corresponding eval test app. Trust is the moat; noise is the enemy.
+- **Rule-first, LLM-second.** The Rule Pre-filter is the primary trust mechanism. The LLM Tier handles the long tail of novel patterns the rules don't cover.
+- **Pure Dart in the runtime path.** No Python, no Rust, no native extensions in v1. The daemon is `dart compile exe`. Python is CI-only.
 - **Interface-first on every external dependency.** `VectorStore`, `LlmProvider`, `RuleProvider` are interfaces. Implementations swap without touching business logic.
-- **Zero data egress by default.** All network calls go to localhost (Ollama, daemon). No telemetry. No analytics.
-- **Declarative rules, not imperative code.** A Rule is data. Adding a rule requires no Dart knowledge.
-- **Confidence is always explicit.** Every Diagnosis carries a confidence score. Never hide uncertainty.
+- **Zero data egress, unconditionally.** All network calls go to localhost. Session History is local-only, never uploaded. No telemetry. No analytics. No phone-home.
+- **Declarative rules, not imperative code.** A Rule is a typed Dart constant. Adding a KB Entry requires no knowledge of the daemon internals.
+- **Confidence is always explicit.** Every Diagnosis carries a Confidence score. The UI always surfaces it. Never hide uncertainty from the developer.
+- **KB versioning is independent of the package.** The KB has its own semver and ships via GitHub Releases as a KB Bundle. New rules reach users via KB Hot-reload — no pub upgrade required. Deprecated entries are marked, never deleted.
+- **Pre-computed embeddings ship in the KB Bundle.** No cold-start embedding delay. The Vector Store is populated from the bundle at load time.
 
 ## Constraints
 

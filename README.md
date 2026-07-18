@@ -35,10 +35,11 @@ Flutter app  →  VM Service (frame timing, stacks, rebuilds)
 ```bash
 # Install Ollama
 brew install ollama        # macOS
-# See https://ollama.ai for Linux/Windows
+# See https://ollama.com for Linux/Windows
 
-# Pull the model
+# Pull both models JankDoc uses
 ollama pull qwen2.5-coder:7b
+ollama pull nomic-embed-text
 ```
 
 ### 2. Add to your Flutter app
@@ -54,7 +55,7 @@ dev_dependencies:
 import 'package:jankdoc/jankdoc.dart';
 
 void main() async {
-  await JankDoc.attach(); // ← one line, zero overhead in release
+  await JankDoc.attach(); // one line, no-op in release builds
   runApp(const MyApp());
 }
 ```
@@ -66,6 +67,15 @@ flutter run
 ```
 
 The daemon starts automatically. Open DevTools → **JankDoc** tab.
+
+### 4. Stuck? Run the doctor.
+
+```bash
+dart run jankdoc:doctor
+```
+
+Checks Ollama, both models, the daemon port, and the KB bundle cache. Prints
+a copy-pasteable fix for every failing check.
 
 ---
 
@@ -164,38 +174,39 @@ See [full schema reference](docs/jankdoc-yaml-schema.md).
 
 ```
 packages/
-  jankdoc_core/       → Models, interfaces. No internal deps.
-  jankdoc_rules/      → Rule engine + 26 built-in rules.
-  jankdoc/            → Published package + analysis daemon binary.
+  jankdoc_core/       → Models, interfaces, built-in rules. No internal deps.
+  jankdoc/            → Published package + analysis daemon + doctor.
   jankdoc_extension/  → Flutter DevTools extension (web UI).
   jankdoc_eval/       → Eval harness (pure Dart, no Ollama required).
+examples/
+  sample_app/         → Minimal Flutter app that triggers 3 jank antipatterns.
 jankdoc-vscode/       → VS Code companion extension (TypeScript).
 ```
 
-Dependency direction: `core ← rules ← jankdoc ← extension`
+Dependency direction: `core ← jankdoc ← extension`
 
 ---
 
 ## Development
 
+This is a Dart workspace (`resolution: workspace`). Standard `pub` commands
+work at the root:
+
 ```bash
-# Install Melos
-dart pub global activate melos
+# Fetch all workspace deps
+flutter pub get
 
-# Bootstrap all packages
-melos bootstrap
+# Run all Dart tests
+dart test packages/jankdoc packages/jankdoc_core packages/jankdoc_eval
 
-# Run all tests
-melos run test
+# Run Flutter tests (the extension + sample_app widgets)
+flutter test
 
-# Run eval suite
-melos run test:eval
+# Run the sample app
+cd examples/sample_app && flutter run
 
-# Build daemon binary
-melos run daemon:build
-
-# Build DevTools extension
-melos run extension:build
+# Health check on your local install
+dart run jankdoc:doctor
 ```
 
 ---

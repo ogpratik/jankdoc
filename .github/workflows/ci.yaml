@@ -148,6 +148,28 @@ jobs:
       - name: Smoke-test CI runner --eval
         run: /tmp/jankdoc_ci --eval --verbose
 
+  # ─── Sample app build ─────────────────────────────────────────────────────
+  # Verifies examples/sample_app compiles on every PR so we catch API
+  # regressions that would break the copy-paste getting-started snippet.
+  sample-app-build:
+    name: Build sample_app (macOS)
+    runs-on: macos-14
+    needs: analyze
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.29.0"
+          channel: stable
+      - name: Fetch workspace deps
+        run: flutter pub get
+      - name: Flutter analyze sample_app
+        working-directory: examples/sample_app
+        run: flutter analyze .
+      - name: Build sample_app for macOS
+        working-directory: examples/sample_app
+        run: flutter build macos --debug
+
   # ─── SARIF code scanning upload ───────────────────────────────────────────
   # Optional: upload SARIF to GitHub Code Scanning if telemetry recorded.
   # Set secret JANKDOC_TELEMETRY_JSON with a captured session's batch JSON.

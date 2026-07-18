@@ -1,0 +1,128 @@
+name: Release daemon binaries
+
+# Trigger on daemon-specific tags, NOT pub-package tags.
+#
+# Daemon binaries are versioned independently from the `jankdoc` pub package
+# (ADR-0014, and the compatibility matrix in LAUNCH_PLAN.md). One daemon
+# binary version supports many pub-package betas, so we cut daemon releases
+# on their own cadence via `daemon-v<version>` tags.
+#
+# The tag version MUST match `_kDaemonVersion` in
+# `packages/jankdoc/lib/src/daemon_launcher.dart`, because DaemonLauncher
+# builds its download URL as:
+#   $releaseRepo/releases/download/v$_kDaemonVersion/jankdoc-daemon-…
+# The "Verify tag matches _kDaemonVersion" step below enforces that.
+on:
+  push:
+    tags: ["daemon-v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }} daemon
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-arm64
+            runs-on: macos-14
+            binary_ext: ""
+          - platform: macos-x64
+            runs-on: macos-13
+            binary_ext: ""
+          - platform: linux-x64
+            runs-on: ubuntu-latest
+            binary_ext: ""
+          - platform: windows-x64
+            runs-on: windows-latest
+            binary_ext: ".exe"
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.29.0"
+          channel: stable
+
+      - name: Fetch workspace deps
+        run: flutter pub get
+
+      - name: Compile daemon binary
+        working-directory: packages/jankdoc
+        run: dart build cli -t bin/daemon.dart -o build/cli
+
+      - name: Verify tag matches _kDaemonVersion and rename output
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Parse the version DaemonLauncher will look for at runtime.
+          source_version=$(grep -E "^const _kDaemonVersion" \
+            packages/jankdoc/lib/src/daemon_launcher.dart \
+            | sed -E "s/.*'([^']+)'.*/\1/")
+          if [ -z "$source_version" ]; then
+            echo "Could not parse _kDaemonVersion from daemon_launcher.dart" >&2
+            exit 1
+          fi
+
+          # Parse the version from the tag (workflow_dispatch has no tag).
+          if [ -n "${GITHUB_REF_NAME:-}" ] && [[ "$GITHUB_REF_NAME" == daemon-v* ]]; then
+            tag_version="${GITHUB_REF_NAME#daemon-v}"
+          else
+            tag_version="$source_version"  # manual dispatch: assume source is right
+          fi
+
+          if [ "$tag_version" != "$source_version" ]; then
+            echo "Tag version ($tag_version) does not match _kDaemonVersion ($source_version)." >&2
+            echo "DaemonLauncher would fail to find this binary at runtime." >&2
+            echo "Bump _kDaemonVersion in daemon_launcher.dart or retag." >&2
+            exit 1
+          fi
+
+          echo "Daemon binary version: $source_version"
+          src="packages/jankdoc/build/cli/bundle/bin/daemon${{ matrix.binary_ext }}"
+          dst="jankdoc-daemon-${source_version}-${{ matrix.platform }}${{ matrix.binary_ext }}"
+          cp "$src" "$dst"
+          echo "ARTIFACT=$dst" >> "$GITHUB_ENV"
+
+      - name: Compute SHA-256 checksum
+        shell: bash
+        run: |
+          if command -v shasum >/dev/null 2>&1; then
+            shasum -a 256 "$ARTIFACT" > "$ARTIFACT.sha256"
+          else
+            sha256sum "$ARTIFACT" > "$ARTIFACT.sha256"
+          fi
+          cat "$ARTIFACT.sha256"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: daemon-${{ matrix.platform }}
+          path: |
+            ${{ env.ARTIFACT }}
+            ${{ env.ARTIFACT }}.sha256
+
+  release:
+    name: Attach binaries to GitHub Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/daemon-v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Flatten dist/
+        run: |
+          mkdir -p out
+          find dist -type f \( -name 'jankdoc-daemon-*' -o -name '*.sha256' \) -exec cp {} out/ \;
+          ls -la out/
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/*

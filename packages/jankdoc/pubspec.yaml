@@ -1,10 +1,18 @@
 name: jankdoc
 description: >
-  A Flutter DevTools extension that diagnoses jank at the code level.
-  Local-first — powered by Ollama. Zero data egress.
-version: 1.0.0
-homepage: https://jankdoc.dev
+  A Flutter DevTools extension that diagnoses jank at the code level with
+  a local LLM (Ollama) — file, line, fix, and confidence. Zero data egress.
+version: 1.0.0-beta.1
+resolution: workspace
+homepage: https://github.com/ogpratik/jankdoc
 repository: https://github.com/ogpratik/jankdoc
+issue_tracker: https://github.com/ogpratik/jankdoc/issues
+topics:
+  - flutter
+  - performance
+  - profiling
+  - devtools
+  - jank
 
 environment:
   sdk: ">=3.6.0 <4.0.0"
@@ -13,10 +21,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  jankdoc_core:
-    path: ../jankdoc_core
-  jankdoc_rules:
-    path: ../jankdoc_rules
+  jankdoc_core: ^1.0.0-beta.1
 
   # HTTP server (daemon)
   shelf: ^1.4.1
@@ -35,24 +40,41 @@ dependencies:
   # CLI argument parsing for bin/daemon.dart
   args: ^2.5.0
 
-  # Vector store JSON persistence
+  # Vector store JSON persistence + KB bundle cache path
   path_provider: ^2.1.4
+
+  # SHA-256 checksum verification for KB bundles
+  crypto: ^3.0.5
 
   # VM Service client — used by TelemetryCollector to capture CPU samples
   # and device info. Transitively provided by devtools_extensions, but we
   # declare it explicitly so the version is pinned.
   vm_service: ^14.2.4
 
+  # YAML parsing — used by jankdoc-kb migration & validation tools.
+  yaml: ^3.1.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  jankdoc_eval:
+    path: ../jankdoc_eval
   lints: ^4.0.0
   test: ^1.25.0
 
 executables:
+  # Public runtime tools — safe to invoke after `dart pub add jankdoc`.
   jankdoc_daemon: daemon
+  jankdoc_doctor: doctor
+  # NOTE: The LLM baseline runner lives at `tool/llm_harness.dart`, not `bin/`.
+  # It depends on the dev-only `jankdoc_eval` package, which pub would reject
+  # if referenced from `bin/`. Maintainers invoke it from the workspace via
+  # `dart run packages/jankdoc/tool/llm_harness.dart`.
 
 flutter:
   plugin:
     platforms:
       any: {}
+
+  assets:
+    - assets/binary_checksums.json
