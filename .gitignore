@@ -32,3 +32,4 @@ packages/jankdoc_eval/results/
 jankdoc-vscode/node_modules/
 jankdoc-vscode/out/
 jankdoc-vscode/*.vsix
+packages/jankdoc/bin/jankdoc_daemon
