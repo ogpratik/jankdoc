@@ -37,6 +37,7 @@ import 'dart:io';
 import 'package:flutter/widgets.dart';
 
 import 'src/daemon_launcher.dart';
+import 'src/startup_banner.dart';
 import 'src/telemetry/telemetry_collector.dart';
 
 export 'src/daemon_launcher.dart';
@@ -77,7 +78,11 @@ abstract final class JankDoc {
   /// - **Release no-op**: compiles away entirely in release mode.
   /// - **Non-fatal**: if the daemon can't start, JankDoc logs a message and
   ///   returns — your app keeps running normally.
-  static Future<void> attach() async {
+  ///
+  /// Set [quiet] to `true` (or the `JANKDOC_QUIET` env var to any non-empty
+  /// value) to suppress the startup banner — useful for CI and benchmark runs
+  /// where startup output is noise.
+  static Future<void> attach({bool quiet = false}) async {
     // ── Release guard ──────────────────────────────────────────────────────
     // const bool.fromEnvironment is evaluated at compile time; the entire
     // body is tree-shaken in release builds.
@@ -94,8 +99,6 @@ abstract final class JankDoc {
     int port;
     try {
       port = await _launcher.ensureRunning();
-      _log('Analysis daemon ready on port $port. '
-          'Open Flutter DevTools → JankDoc tab.');
     } on ProcessException catch (e) {
       _log('Could not start daemon: ${e.message}\n'
           'Run `dart run jankdoc:daemon` in a separate terminal, '
@@ -106,6 +109,12 @@ abstract final class JankDoc {
           'Run `dart run jankdoc:daemon` manually to diagnose.');
       return;
     }
+
+    // ── Startup banner ─────────────────────────────────────────────────────
+    // Render best-effort — never fails startup on banner errors.
+    try {
+      await StartupBanner(port: port, quiet: quiet).render();
+    } on Object catch (_) {/* banner is nice-to-have */}
 
     // ── Start telemetry collector ──────────────────────────────────────────
     try {
