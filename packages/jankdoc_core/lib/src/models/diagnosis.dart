@@ -59,8 +59,7 @@ final class Diagnosis {
   final DateTime? createdAt;
 
   /// Whether the root cause was confidently attributed to a specific file/line.
-  bool get hasFileAttribution =>
-      rootCause.file != null && confidence > 0.5;
+  bool get hasFileAttribution => rootCause.file != null && confidence > 0.5;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -86,7 +85,8 @@ final class Diagnosis {
         confidence: (json['confidence'] as num).toDouble(),
         severity: Severity.values.byName(json['severity'] as String),
         tier: DiagnosisTier.values.byName(json['tier'] as String),
-        rootCause: RootCause.fromJson(json['root_cause'] as Map<String, dynamic>),
+        rootCause:
+            RootCause.fromJson(json['root_cause'] as Map<String, dynamic>),
         explanation: json['explanation'] as String,
         fix: Fix.fromJson(json['fix'] as Map<String, dynamic>),
         sources: List<String>.from(json['sources'] as List),
@@ -194,8 +194,7 @@ final class Fix {
       };
 
   factory Fix.fromJson(Map<String, dynamic> json) {
-    final improvement =
-        json['expected_improvement_ms'] as Map<String, dynamic>;
+    final improvement = json['expected_improvement_ms'] as Map<String, dynamic>;
     return Fix(
       summary: json['summary'] as String,
       expectedImprovementMs: (

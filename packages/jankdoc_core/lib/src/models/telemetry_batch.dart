@@ -9,6 +9,7 @@ import 'jank_frame.dart';
 final class TelemetryBatch {
   const TelemetryBatch({
     required this.sessionId,
+    required this.projectFingerprint,
     required this.windowStartMs,
     required this.windowEndMs,
     required this.jankFrames,
@@ -20,6 +21,14 @@ final class TelemetryBatch {
   });
 
   final String sessionId;
+
+  /// Stable 16-hex-char hash of the project root directory path.
+  ///
+  /// Computed client-side (FNV-1a of `Directory.current.path`) so the actual
+  /// path is never transmitted to the daemon.
+  /// Used by the daemon to correlate sessions from the same project and
+  /// produce accurate cross-session recurrence counts.
+  final String projectFingerprint;
 
   /// Window start time in milliseconds since epoch.
   final int windowStartMs;
@@ -64,6 +73,7 @@ final class TelemetryBatch {
 
   Map<String, dynamic> toJson() => {
         'session_id': sessionId,
+        'project_fingerprint': projectFingerprint,
         'window_start_ms': windowStartMs,
         'window_end_ms': windowEndMs,
         'jank_frames': jankFrames.map((f) => f.toJson()).toList(),
@@ -76,13 +86,18 @@ final class TelemetryBatch {
 
   factory TelemetryBatch.fromJson(Map<String, dynamic> json) => TelemetryBatch(
         sessionId: json['session_id'] as String,
+        // Backward-compat: default to empty string if field absent
+        // (batches sent by an older client before this field was added).
+        projectFingerprint: json['project_fingerprint'] as String? ?? '',
         windowStartMs: json['window_start_ms'] as int,
         windowEndMs: json['window_end_ms'] as int,
         jankFrames: (json['jank_frames'] as List)
             .map((e) => JankFrame.fromJson(e as Map<String, dynamic>))
             .toList(),
-        analysisMode: AnalysisMode.values.byName(json['analysis_mode'] as String),
-        deviceInfo: DeviceInfo.fromJson(json['device_info'] as Map<String, dynamic>),
+        analysisMode:
+            AnalysisMode.values.byName(json['analysis_mode'] as String),
+        deviceInfo:
+            DeviceInfo.fromJson(json['device_info'] as Map<String, dynamic>),
         cpuUsagePercent: (json['cpu_usage_percent'] as num?)?.toDouble(),
         heapUsageMb: (json['heap_usage_mb'] as num?)?.toDouble(),
         gcCount: (json['gc_count'] as int?) ?? 0,

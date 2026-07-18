@@ -182,8 +182,7 @@ final class RebuildStorm extends Condition {
         .expand((f) => f.rebuildCounts.entries)
         .where((e) => e.key.contains(widgetType))
         .fold(0, (sum, e) => sum + e.value);
-    final threshold =
-        (batch.worstFrame.targetFps * factor).round();
+    final threshold = (batch.worstFrame.targetFps * factor).round();
     return count > threshold;
   }
 }
@@ -216,9 +215,7 @@ final class GpuContains extends Condition {
 
   @override
   bool evaluate(TelemetryBatch batch) =>
-      batch.deviceInfo.gpuName
-          ?.toLowerCase()
-          .contains(pattern.toLowerCase()) ??
+      batch.deviceInfo.gpuName?.toLowerCase().contains(pattern.toLowerCase()) ??
       false;
 }
 
@@ -241,6 +238,5 @@ final class HeapUsageMb extends Condition {
   final double greaterThan;
 
   @override
-  bool evaluate(TelemetryBatch batch) =>
-      (batch.heapUsageMb ?? 0) > greaterThan;
+  bool evaluate(TelemetryBatch batch) => (batch.heapUsageMb ?? 0) > greaterThan;
 }
