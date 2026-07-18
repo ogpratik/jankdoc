@@ -21,7 +21,7 @@ void main() {
       server.listen((request) async {
         if (request.method == 'POST' &&
             request.uri.path == '/telemetry/batch') {
-          final body = await request.transform(utf8.decoder).join();
+          final body = await request.cast<List<int>>().transform(utf8.decoder).join();
           received.add(jsonDecode(body) as Map<String, dynamic>);
           request.response
             ..statusCode = 200
@@ -59,6 +59,7 @@ void main() {
 
       final batch = TelemetryBatch(
         sessionId: 'test-session',
+        projectFingerprint: 'test000000000000',
         windowStartMs: 0,
         windowEndMs: 500,
         jankFrames: [frame],
