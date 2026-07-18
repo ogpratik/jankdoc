@@ -61,19 +61,13 @@ final class EvalReport {
     return cases.fold(0, (s, c) => s + c.elapsedMs) ~/ cases.length;
   }
 
-  int get ruleTierHits =>
-      cases
-          .where((c) =>
-              c.passed &&
-              c.diagnosis?.tier == DiagnosisTier.rule)
-          .length;
+  int get ruleTierHits => cases
+      .where((c) => c.passed && c.diagnosis?.tier == DiagnosisTier.rule)
+      .length;
 
-  int get llmTierHits =>
-      cases
-          .where((c) =>
-              c.passed &&
-              c.diagnosis?.tier == DiagnosisTier.llm)
-          .length;
+  int get llmTierHits => cases
+      .where((c) => c.passed && c.diagnosis?.tier == DiagnosisTier.llm)
+      .length;
 
   String toSummary() {
     final pct = (passRate * 100).toStringAsFixed(1);

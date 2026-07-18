@@ -57,6 +57,7 @@ abstract final class EvalFixtures {
     );
     return TelemetryBatch(
       sessionId: _session,
+      projectFingerprint: 'eval000000000000',
       windowStartMs: 0,
       windowEndMs: 33,
       jankFrames: [frame],
@@ -87,7 +88,8 @@ abstract final class EvalFixtures {
 
   static EvalCase get animatedBuilderRebuildStorm => EvalCase(
         id: 'animated-builder-rebuild-storm-001',
-        description: 'AnimatedBuilder rebuilds a heavy subtree >90 times with a list in the tree',
+        description:
+            'AnimatedBuilder rebuilds a heavy subtree >90 times with a list in the tree',
         batch: _batch(
           // Keep uiMs ≤ 16 so heavy-compute-main-isolate (priority 12) doesn't
           // shadow this rule (priority 10) via UiThreadMs(greaterThan:16).
@@ -143,7 +145,8 @@ abstract final class EvalFixtures {
 
   static EvalCase get missingConstConstructor => EvalCase(
         id: 'missing-const-constructor-001',
-        description: 'Scaffold rebuilt 130 times — likely missing const constructors',
+        description:
+            'Scaffold rebuilt 130 times — likely missing const constructors',
         batch: _batch(
           // Keep uiMs ≤ 16 so heavy-compute-main-isolate (priority 12) doesn't
           // shadow this rule (priority 5) via UiThreadMs(greaterThan:16).
@@ -373,14 +376,18 @@ abstract final class EvalFixtures {
 
   // ── Negative cases (should NOT trigger a rule) ─────────────────────────────
 
-  /// A frame that's over budget but has no identifiable pattern.
+  /// A frame right at the frame budget with no identifiable pattern.
   /// The rule engine should return null — no false positives.
+  ///
+  /// uiMs is 16.0 (not *greater than* 16), so heavy-compute-main-isolate
+  /// (UiThreadMs(greaterThan: 16.0)) does not fire. No other rule fires
+  /// because there are no matching widget types or stack patterns.
   static EvalCase get unknownJankNoMatch => EvalCase(
         id: 'unknown-jank-no-match-001',
         description:
-            'Over-budget frame with unusual stack — should not match any rule',
+            'Frame at budget boundary with unusual stack — should not match any rule',
         batch: _batch(
-          uiMs: 22.0,
+          uiMs: 16.0,
           rasterMs: 5.0,
           uiStack: [
             _frame(

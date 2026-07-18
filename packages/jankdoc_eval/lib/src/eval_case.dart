@@ -51,8 +51,7 @@ final class PatternIdAssertion implements DiagnosisAssertion {
   String get description => 'patternId == "$expectedPatternId"';
 
   @override
-  bool check(Diagnosis diagnosis) =>
-      diagnosis.patternId == expectedPatternId;
+  bool check(Diagnosis diagnosis) => diagnosis.patternId == expectedPatternId;
 }
 
 /// Asserts the diagnosis severity is at least [minSeverity].
@@ -61,8 +60,7 @@ final class MinSeverityAssertion implements DiagnosisAssertion {
   final Severity minSeverity;
 
   @override
-  String get description =>
-      'severity >= ${minSeverity.name}';
+  String get description => 'severity >= ${minSeverity.name}';
 
   @override
   bool check(Diagnosis diagnosis) =>
@@ -79,8 +77,7 @@ final class MinConfidenceAssertion implements DiagnosisAssertion {
       'confidence >= ${(minConfidence * 100).toStringAsFixed(0)}%';
 
   @override
-  bool check(Diagnosis diagnosis) =>
-      diagnosis.confidence >= minConfidence;
+  bool check(Diagnosis diagnosis) => diagnosis.confidence >= minConfidence;
 }
 
 /// Asserts the diagnosis came from the rule tier (no LLM invoked).
@@ -91,8 +88,7 @@ final class RuleTierAssertion implements DiagnosisAssertion {
   String get description => 'tier == rule';
 
   @override
-  bool check(Diagnosis diagnosis) =>
-      diagnosis.tier == DiagnosisTier.rule;
+  bool check(Diagnosis diagnosis) => diagnosis.tier == DiagnosisTier.rule;
 }
 
 /// Asserts that the cited file path contains [substring].

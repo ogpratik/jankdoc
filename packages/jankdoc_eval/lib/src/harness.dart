@@ -1,5 +1,4 @@
 import 'package:jankdoc_core/jankdoc_core.dart';
-import 'package:jankdoc_rules/jankdoc_rules.dart';
 
 import 'eval_case.dart';
 import 'eval_result.dart';
@@ -29,9 +28,7 @@ final class EvalHarness {
       results.add(await _runCase(c));
     }
 
-    final totalMs = DateTime.now()
-        .difference(startTime)
-        .inMilliseconds;
+    final totalMs = DateTime.now().difference(startTime).inMilliseconds;
 
     return EvalReport(
       cases: results,
@@ -63,8 +60,7 @@ final class EvalHarness {
             ))
         .toList();
 
-    final passed =
-        error == null && assertionResults.every((ar) => ar.passed);
+    final passed = error == null && assertionResults.every((ar) => ar.passed);
 
     return CaseResult(
       caseId: c.id,
@@ -84,9 +80,7 @@ final class EvalHarness {
   static Diagnosis _matchToDiagnosis(RuleMatch match, TelemetryBatch batch) {
     final rule = match.rule;
     final frame = batch.worstFrame;
-    final userFrame = frame.uiStack
-        .where((s) => s.isUserCode)
-        .firstOrNull;
+    final userFrame = frame.uiStack.where((s) => s.isUserCode).firstOrNull;
 
     return Diagnosis(
       id: 'eval-${rule.id}',
