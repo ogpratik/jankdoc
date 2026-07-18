@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<!--
+		Even in release builds we need localhost network client access if the
+		developer chooses to profile with JankDoc still attached. JankDoc.attach()
+		is a compile-time no-op in release mode, so this entitlement is dormant
+		for shipping consumer apps.
+	-->
+	<key>com.apple.security.network.client</key>
+	<true/>
+</dict>
+</plist>

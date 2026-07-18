@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.cs.allow-jit</key>
+	<true/>
+	<!--
+		JankDoc opens two localhost connections from the Flutter app:
+		- the analysis daemon it spawns on 127.0.0.1:9101
+		- Ollama on 127.0.0.1:11434 (via the daemon, not the app)
+		The client entitlement covers outgoing localhost HTTP calls.
+	-->
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<key>com.apple.security.network.server</key>
+	<true/>
+</dict>
+</plist>

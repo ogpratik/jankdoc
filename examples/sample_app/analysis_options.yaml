@@ -1,0 +1,3 @@
+# Inherit the strict workspace-wide lint config so the sample app matches
+# the codebase style.
+include: ../../analysis_options.yaml

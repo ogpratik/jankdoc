@@ -1,0 +1,25 @@
+name: jankdoc_sample_app
+description: >
+  Minimal Flutter app that intentionally triggers common jank antipatterns.
+  Use with the JankDoc DevTools extension to see diagnoses in action.
+publish_to: none
+version: 1.0.0+1
+resolution: workspace
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+  flutter: ">=3.29.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  jankdoc:
+    path: ../../packages/jankdoc
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
