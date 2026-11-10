@@ -178,6 +178,10 @@ void main() {
       );
       addTearDown(container.dispose);
 
+      // Keep a listener like the UI does: without one, the rebuild triggered
+      // by daemonUrlProvider emitting is never scheduled and `.future` hangs.
+      container.listen(connectionStateProvider, (_, __) {});
+
       final state = await container
           .read(connectionStateProvider.future);
       expect(state, DaemonConnectionState.disconnected);

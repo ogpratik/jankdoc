@@ -20,6 +20,7 @@ dependencies:
   jankdoc_core:
     path: ../jankdoc_core
   http: ^1.2.0
+  meta: ^1.15.0
   intl: ^0.19.0
 
 dev_dependencies:

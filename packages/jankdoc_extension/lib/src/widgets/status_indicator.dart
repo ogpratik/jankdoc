@@ -77,7 +77,7 @@ class StatusIndicator extends ConsumerWidget {
             ],
             const SizedBox(width: 8),
             Text(
-              '${stats.total} diagnosis${stats.total != 1 ? 'es' : ''}',
+              '${stats.total} ${stats.total == 1 ? 'diagnosis' : 'diagnoses'}',
               style: TextStyle(
                 fontSize: 11,
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.6),

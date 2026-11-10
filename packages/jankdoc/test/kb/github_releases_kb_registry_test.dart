@@ -26,7 +26,7 @@ String _releasesJson(
       'draft': tag == draftTag,
       'prerelease': false,
       'assets': assetName == null
-          ? []
+          ? <Map<String, Object?>>[]
           : [
               {
                 'name': assetName,

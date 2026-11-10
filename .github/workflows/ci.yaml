@@ -10,109 +10,66 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# The repo is a Dart pub workspace (root pubspec.yaml `workspace:`), not Melos.
+# `jankdoc` depends on the Flutter SDK, so every job needs Flutter — a bare
+# Dart SDK cannot resolve the workspace. One `flutter pub get` at the root
+# resolves every member; `jankdoc_extension` sits outside the workspace and
+# gets its own `flutter pub get`.
+
 jobs:
-  # ─── Analysis ──────────────────────────────────────────────────────────────
-  analyze:
-    name: Dart analyze
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dart-lang/setup-dart@v1
-        with:
-          sdk: "3.6.0"
-      - name: Install Melos
-        run: dart pub global activate melos
-      - name: Bootstrap workspace
-        run: melos bootstrap
-      - name: Analyze (errors + warnings fatal)
-        run: melos run analyze
-
-  # ─── Unit tests ────────────────────────────────────────────────────────────
+  # ─── Analyze + test (minimum supported Flutter and latest stable) ─────────
   test:
-    name: Unit tests
+    name: Analyze + test (Flutter ${{ matrix.flutter }})
     runs-on: ubuntu-latest
-    needs: analyze
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.29.0 is the floor declared in packages/jankdoc/pubspec.yaml.
+        flutter: ["3.29.0", "stable"]
     steps:
       - uses: actions/checkout@v4
-      - uses: dart-lang/setup-dart@v1
+      - uses: subosito/flutter-action@v2
         with:
-          sdk: "3.6.0"
-      - name: Install Melos
-        run: dart pub global activate melos
-      - name: Bootstrap workspace
-        run: melos bootstrap
-      - name: Run tests
-        run: melos run test
-
-  # ─── Eval gate ─────────────────────────────────────────────────────────────
-  eval:
-    name: Eval gate (rule pass-rate ≥ 90%)
-    runs-on: ubuntu-latest
-    needs: analyze
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dart-lang/setup-dart@v1
-        with:
-          sdk: "3.6.0"
-      - name: Install Melos
-        run: dart pub global activate melos
-      - name: Bootstrap workspace
-        run: melos bootstrap
-      - name: Run eval suite
-        run: dart test packages/jankdoc_eval/test/rule_eval_test.dart --reporter expanded
-
-  # ─── CI binary eval ────────────────────────────────────────────────────────
-  ci-eval:
-    name: CI runner eval (inline fixtures)
-    runs-on: ubuntu-latest
-    needs: analyze
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dart-lang/setup-dart@v1
-        with:
-          sdk: "3.6.0"
-      - name: Install Melos
-        run: dart pub global activate melos
-      - name: Bootstrap workspace
-        run: melos bootstrap
-      - name: Run CI eval mode
+          flutter-version: ${{ matrix.flutter == 'stable' && '' || matrix.flutter }}
+          channel: stable
+      - name: Fetch workspace deps
+        run: flutter pub get
+      - name: Analyze (errors + warnings fatal)
+        run: |
+          set -e
+          for pkg in packages/jankdoc_core packages/jankdoc packages/jankdoc_eval examples/sample_app; do
+            echo "::group::dart analyze $pkg"
+            (cd "$pkg" && dart analyze --fatal-warnings)
+            echo "::endgroup::"
+          done
+      - name: Test jankdoc (Flutter package)
+        working-directory: packages/jankdoc
+        run: flutter test
+      - name: Test jankdoc_eval (rule pass-rate gate + LLM harness)
+        working-directory: packages/jankdoc_eval
+        run: dart test --reporter expanded
+      - name: CI runner eval (inline fixtures)
         working-directory: packages/jankdoc
         run: dart run bin/ci.dart --eval --verbose
 
-  # ─── Extension analysis ─────────────────────────────────────────────────────
-  extension-analyze:
-    name: Analyze DevTools extension
+  # ─── DevTools extension (Flutter web, outside the workspace) ──────────────
+  extension:
+    name: DevTools extension
     runs-on: ubuntu-latest
-    needs: analyze
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.29.0"
           channel: stable
-      - name: Install Melos
-        run: dart pub global activate melos
-      - name: Bootstrap workspace
-        run: melos bootstrap
-      - name: Analyze extension
+      - name: Fetch deps
         working-directory: packages/jankdoc_extension
-        run: flutter analyze lib/
-
-  # ─── Extension build ───────────────────────────────────────────────────────
-  extension-build:
-    name: Build DevTools extension
-    runs-on: ubuntu-latest
-    needs: extension-analyze
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: "3.29.0"
-          channel: stable
-      - name: Install Melos
-        run: dart pub global activate melos
-      - name: Bootstrap workspace
-        run: melos bootstrap
+        run: flutter pub get
+      - name: Analyze
+        working-directory: packages/jankdoc_extension
+        run: flutter analyze
+      - name: Test (Chrome — the app imports dart:js_interop via devtools_extensions)
+        working-directory: packages/jankdoc_extension
+        run: flutter test --platform chrome
       - name: Build extension web app
         working-directory: packages/jankdoc_extension
         run: flutter build web --release --output ../jankdoc/extension/devtools/build
@@ -123,30 +80,40 @@ jobs:
           path: packages/jankdoc/extension/devtools/build
           retention-days: 7
 
-  # ─── Daemon compile check ──────────────────────────────────────────────────
+  # ─── Daemon + CI binaries compile and smoke test ──────────────────────────
   daemon-compile:
     name: Compile daemon + CI binaries
     runs-on: ubuntu-latest
-    needs: analyze
+    needs: test
     steps:
       - uses: actions/checkout@v4
-      - uses: dart-lang/setup-dart@v1
+      - uses: subosito/flutter-action@v2
         with:
-          sdk: "3.6.0"
-      - name: Install Melos
-        run: dart pub global activate melos
-      - name: Bootstrap workspace
-        run: melos bootstrap
-      - name: Compile daemon
+          channel: stable
+      - name: Fetch workspace deps
+        run: flutter pub get
+      # `dart compile exe` refuses packages with build hooks (objective_c,
+      # pulled in transitively), so use `dart build cli` like release.yaml.
+      - name: Compile daemon + CI runner
         working-directory: packages/jankdoc
-        run: dart compile exe bin/daemon.dart -o /tmp/jankdoc_daemon
+        run: |
+          dart build cli -t bin/daemon.dart -o /tmp/jd/daemon
+          dart build cli -t bin/ci.dart -o /tmp/jd/ci
       - name: Smoke-test daemon --help
-        run: /tmp/jankdoc_daemon --help
-      - name: Compile CI runner
-        working-directory: packages/jankdoc
-        run: dart compile exe bin/ci.dart -o /tmp/jankdoc_ci
+        run: /tmp/jd/daemon/bundle/bin/daemon --help
+      - name: Smoke-test daemon /health (binary copied out of its bundle, as released)
+        run: |
+          set -e
+          cp /tmp/jd/daemon/bundle/bin/daemon /tmp/jankdoc_daemon
+          /tmp/jankdoc_daemon --port 9199 --no-kb-registry &
+          for i in $(seq 1 50); do
+            curl -fsS http://127.0.0.1:9199/health && exit 0
+            sleep 0.2
+          done
+          echo "daemon never became healthy" >&2
+          exit 1
       - name: Smoke-test CI runner --eval
-        run: /tmp/jankdoc_ci --eval --verbose
+        run: /tmp/jd/ci/bundle/bin/ci --eval --verbose
 
   # ─── Sample app build ─────────────────────────────────────────────────────
   # Verifies examples/sample_app compiles on every PR so we catch API
@@ -154,25 +121,21 @@ jobs:
   sample-app-build:
     name: Build sample_app (macOS)
     runs-on: macos-14
-    needs: analyze
+    needs: test
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.29.0"
           channel: stable
       - name: Fetch workspace deps
         run: flutter pub get
-      - name: Flutter analyze sample_app
-        working-directory: examples/sample_app
-        run: flutter analyze .
       - name: Build sample_app for macOS
         working-directory: examples/sample_app
         run: flutter build macos --debug
 
   # ─── SARIF code scanning upload ───────────────────────────────────────────
   # Optional: upload SARIF to GitHub Code Scanning if telemetry recorded.
-  # Set secret JANKDOC_TELEMETRY_JSON with a captured session's batch JSON.
+  # Set repo variable JANKDOC_TELEMETRY_JSON with a captured session's batch JSON.
   sarif-upload:
     name: Upload SARIF to Code Scanning
     runs-on: ubuntu-latest
@@ -182,20 +145,20 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@v4
-      - uses: dart-lang/setup-dart@v1
+      - uses: subosito/flutter-action@v2
         with:
-          sdk: "3.6.0"
-      - name: Install Melos
-        run: dart pub global activate melos
-      - name: Bootstrap workspace
-        run: melos bootstrap
+          channel: stable
+      - name: Fetch workspace deps
+        run: flutter pub get
       - name: Compile CI runner
         working-directory: packages/jankdoc
-        run: dart compile exe bin/ci.dart -o /tmp/jankdoc_ci
+        run: dart build cli -t bin/ci.dart -o /tmp/jd/ci
       - name: Run analysis and emit SARIF
+        env:
+          TELEMETRY_JSON: ${{ vars.JANKDOC_TELEMETRY_JSON }}
         run: |
-          echo '${{ vars.JANKDOC_TELEMETRY_JSON }}' | \
-            /tmp/jankdoc_ci --output results.sarif.json || true
+          printf '%s' "$TELEMETRY_JSON" | \
+            /tmp/jd/ci/bundle/bin/ci --output results.sarif.json || true
       - name: Upload SARIF to GitHub
         uses: github/codeql-action/upload-sarif@v3
         with:

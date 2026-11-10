@@ -203,7 +203,7 @@ void main() {
 
       manager.startHotReload();
       // Give the 1ms timer plenty of time to fire and run _checkForNewerBundle.
-      await Future.delayed(const Duration(milliseconds: 200));
+      await Future<void>.delayed(const Duration(milliseconds: 200));
       manager.dispose();
 
       expect(reloaded, isNotEmpty,
@@ -229,7 +229,7 @@ void main() {
 
       // Loader still returns v1 — same as active.
       manager.startHotReload();
-      await Future.delayed(const Duration(milliseconds: 100));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
       manager.dispose();
 
       expect(reloadCount, 0,

@@ -16,8 +16,9 @@ class EmptyState extends ConsumerWidget {
         DaemonConnectionState.disconnected;
     final theme = Theme.of(context);
 
+    // Scrollable so the copy never overflows a short or narrow panel.
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -100,32 +101,36 @@ class _CodeSnippet extends StatelessWidget {
           width: 0.5,
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'void main() async {',
-            style: _codeStyle(theme),
-          ),
-          Row(
-            children: [
-              Text('  await ', style: _codeStyle(theme)),
-              Text(
-                'JankDoc',
-                style: _codeStyle(theme).copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w600,
+      // Code must not wrap, so it scrolls sideways in narrow list panels.
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'void main() async {',
+              style: _codeStyle(theme),
+            ),
+            Row(
+              children: [
+                Text('  await ', style: _codeStyle(theme)),
+                Text(
+                  'JankDoc',
+                  style: _codeStyle(theme).copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              Text('.attach();', style: _codeStyle(theme)),
-            ],
-          ),
-          Text(
-            '  runApp(const MyApp());',
-            style: _codeStyle(theme),
-          ),
-          Text('}', style: _codeStyle(theme)),
-        ],
+                Text('.attach();', style: _codeStyle(theme)),
+              ],
+            ),
+            Text(
+              '  runApp(const MyApp());',
+              style: _codeStyle(theme),
+            ),
+            Text('}', style: _codeStyle(theme)),
+          ],
+        ),
       ),
     );
   }

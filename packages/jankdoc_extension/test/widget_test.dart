@@ -6,6 +6,7 @@ import 'package:jankdoc_extension/src/jankdoc_extension_app.dart';
 import 'package:jankdoc_extension/src/providers/daemon_provider.dart';
 import 'package:jankdoc_extension/src/providers/diagnosis_provider.dart';
 import 'package:jankdoc_extension/src/services/daemon_client.dart';
+import 'package:jankdoc_extension/src/widgets/status_indicator.dart';
 
 /// Wraps the widget under test in [MaterialApp] + [ProviderScope] with
 /// safe provider overrides so we never touch DevTools' `serviceManager`.
@@ -34,6 +35,11 @@ Widget _buildTestApp({List<Override> overrides = const []}) {
     ),
   );
 }
+
+/// Finds [text] inside the status bar only — the empty state repeats some of
+/// the same copy (e.g. "Connecting to daemon…", "diagnosis").
+Finder _inStatusBar(Finder matching) =>
+    find.descendant(of: find.byType(StatusIndicator), matching: matching);
 
 void main() {
   group('JankDocExtensionApp — smoke tests', () {
@@ -100,7 +106,7 @@ void main() {
       ));
       await tester.pump();
 
-      expect(find.text('Connecting to daemon…'), findsOneWidget);
+      expect(_inStatusBar(find.text('Connecting to daemon…')), findsOneWidget);
     });
   });
 
@@ -111,19 +117,23 @@ void main() {
       await tester.pump();
 
       // Initially no diagnosis count shown
-      expect(find.textContaining('diagnos'), findsNothing);
+      expect(_inStatusBar(find.textContaining('diagnos')), findsNothing);
 
       // Add two diagnoses via the notifier
       final container = ProviderScope.containerOf(
         tester.element(find.byType(JankDocExtensionApp)),
       );
-      container.read(diagnosisNotifierProvider.notifier).add(_fakeDiagnosis('d1'));
-      container.read(diagnosisNotifierProvider.notifier).add(_fakeDiagnosis('d2'));
+      container
+          .read(diagnosisNotifierProvider.notifier)
+          .add(_fakeDiagnosis('d1'));
+      container
+          .read(diagnosisNotifierProvider.notifier)
+          .add(_fakeDiagnosis('d2'));
 
       await tester.pump();
 
       // Status bar should now show the count
-      expect(find.text('2 diagnoses'), findsOneWidget);
+      expect(_inStatusBar(find.text('2 diagnoses')), findsOneWidget);
     });
 
     testWidgets('singular "diagnosis" label for exactly one result',
@@ -134,10 +144,12 @@ void main() {
       final container = ProviderScope.containerOf(
         tester.element(find.byType(JankDocExtensionApp)),
       );
-      container.read(diagnosisNotifierProvider.notifier).add(_fakeDiagnosis('d1'));
+      container
+          .read(diagnosisNotifierProvider.notifier)
+          .add(_fakeDiagnosis('d1'));
       await tester.pump();
 
-      expect(find.text('1 diagnosis'), findsOneWidget);
+      expect(_inStatusBar(find.text('1 diagnosis')), findsOneWidget);
     });
   });
 }

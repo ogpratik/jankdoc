@@ -2,8 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!--
+		Debug/profile builds run unsandboxed: JankDoc.attach() spawns the
+		analysis daemon as a child process (and reads ~/.jankdoc), which the
+		App Sandbox forbids. Release.entitlements stays sandboxed — JankDoc
+		is a no-op in release builds.
+	-->
 	<key>com.apple.security.app-sandbox</key>
-	<true/>
+	<false/>
 	<key>com.apple.security.cs.allow-jit</key>
 	<true/>
 	<!--
