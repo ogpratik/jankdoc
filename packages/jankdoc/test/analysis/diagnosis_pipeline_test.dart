@@ -158,6 +158,47 @@ void main() {
           reason: 'saveDiagnosis must have persisted the row');
     });
 
+    // 1b. Regression: rebuild-count rules match frames with no CPU samples.
+    // An empty uiStack used to throw "Bad state: No element" and drop every
+    // such diagnosis (seen live with the sample app on fast hardware).
+    test('rule match with an empty uiStack still yields a diagnosis', () async {
+      final base = isolatedBatch(EvalFixtures.animatedBuilderRebuildStorm);
+      final batch = TelemetryBatch(
+        sessionId: base.sessionId,
+        projectFingerprint: base.projectFingerprint,
+        windowStartMs: base.windowStartMs,
+        windowEndMs: base.windowEndMs,
+        jankFrames: [
+          for (final f in base.jankFrames)
+            JankFrame(
+              timestamp: f.timestamp,
+              uiThreadMs: f.uiThreadMs,
+              rasterThreadMs: f.rasterThreadMs,
+              totalMs: f.totalMs,
+              targetFps: f.targetFps,
+              uiStack: const [],
+              rasterStack: const [],
+              rebuildCounts: f.rebuildCounts,
+              layoutPhaseMs: f.layoutPhaseMs,
+              paintPhaseMs: f.paintPhaseMs,
+            ),
+        ],
+        analysisMode: base.analysisMode,
+        deviceInfo: base.deviceInfo,
+        gcCount: base.gcCount,
+      );
+      await seedSession(repo, batch);
+
+      final results = await buildPipeline(
+        client: unavailableClient(),
+        repo: repo,
+      ).process(batch).toList();
+
+      expect(results, hasLength(1));
+      expect(results.single.patternId, 'animated-builder-rebuild-storm');
+      expect(results.single.rootCause.file, isNull);
+    });
+
     // 2. No rule match + LLM unavailable → empty stream.
     test('yields nothing when no rule matches and LLM is unavailable', () async {
       final batch = isolatedBatch(EvalFixtures.unknownJankNoMatch);

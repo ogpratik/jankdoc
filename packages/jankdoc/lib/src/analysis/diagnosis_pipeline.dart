@@ -87,11 +87,11 @@ final class DiagnosisPipeline {
     final rule = match.rule;
     final frame = batch.worstFrame;
 
-    // Find the most relevant user-code stack frame
-    final userFrame = frame.uiStack.firstWhere(
-      (f) => f.isUserCode,
-      orElse: () => frame.uiStack.first,
-    );
+    // Find the most relevant user-code stack frame. The stack is empty when
+    // no CPU samples were captured (e.g. rebuild-count rules); the diagnosis
+    // then simply has no source location.
+    final userFrame = frame.uiStack.where((f) => f.isUserCode).firstOrNull ??
+        frame.uiStack.firstOrNull;
 
     final recurrence = await sessionRepo.countRecurrences(
       projectFingerprint: batch.projectFingerprint,
@@ -107,10 +107,10 @@ final class DiagnosisPipeline {
       severity: rule.severity,
       tier: DiagnosisTier.rule,
       rootCause: RootCause(
-        file: userFrame.file,
-        line: userFrame.line,
-        column: userFrame.column,
-        widgetType: userFrame.widgetType,
+        file: userFrame?.file,
+        line: userFrame?.line,
+        column: userFrame?.column,
+        widgetType: userFrame?.widgetType,
         description: 'Matched rule: ${rule.id}',
       ),
       explanation: _explanationForPattern(rule.patternId, frame),

@@ -34,7 +34,7 @@ const _kBinaryReleaseRepo = 'https://github.com/ogpratik/jankdoc';
 ///    Emits a "running from source" log line so developers know why it's slow.
 final class DaemonLauncher {
   static const _defaultPort = 9101;
-  static const _lockFile = '.jankdoc_daemon.lock';
+  static const _lockFileName = 'daemon.lock';
   static const _readyTimeout = Duration(seconds: 15);
 
   int? _port;
@@ -69,11 +69,7 @@ final class DaemonLauncher {
     final cmd = await _resolveDaemonCommand();
 
     // 4. Spawn the daemon process (detached so it survives hot-restart).
-    final process = await Process.start(
-      cmd.executable,
-      cmd.args,
-      mode: ProcessStartMode.detachedWithStdio,
-    );
+    final process = await _spawnDetached(cmd.executable, cmd.args);
     await _writeLockFile(_defaultPort, process.pid);
 
     // 5. Poll until healthy or timeout.
@@ -154,14 +150,42 @@ final class DaemonLauncher {
     );
   }
 
+  /// Starts the daemon fully detached from this app, with its output appended
+  /// to `~/.jankdoc/daemon.log`.
+  ///
+  /// It must not share stdio pipes with the app: the daemon outlives the app
+  /// (later runs reuse it), and once the app exits its next log line would hit
+  /// a broken pipe and kill it — silently, mid-session for whichever run
+  /// reused it.
+  Future<Process> _spawnDetached(String executable, List<String> args) async {
+    if (Platform.isWindows) {
+      return Process.start(executable, args, mode: ProcessStartMode.detached);
+    }
+    final dir = await _jankdocDir();
+    await Directory(dir).create(recursive: true);
+    return Process.start(
+      '/bin/sh',
+      [
+        '-c',
+        r'exec "$0" "$@" >>"$JANKDOC_DAEMON_LOG" 2>&1',
+        executable,
+        ...args
+      ],
+      environment: {'JANKDOC_DAEMON_LOG': '$dir/daemon.log'},
+      mode: ProcessStartMode.detached,
+    );
+  }
+
   // ── Cache helpers ───────────────────────────────────────────────────────────
 
-  Future<String> _binaryDir() async {
+  Future<String> _jankdocDir() async {
     final home = Platform.environment['HOME'] ??
         Platform.environment['USERPROFILE'] ??
         '.';
-    return '$home/.jankdoc/bin';
+    return '$home/.jankdoc';
   }
+
+  Future<String> _binaryDir() async => '${await _jankdocDir()}/bin';
 
   static String _binaryName(String version, String platform) {
     final ext = platform.startsWith('windows') ? '.exe' : '';
@@ -325,7 +349,7 @@ final class DaemonLauncher {
 
   Future<int?> _readLockFile() async {
     try {
-      final file = File(_lockFile);
+      final file = File('${await _jankdocDir()}/$_lockFileName');
       if (!file.existsSync()) return null;
       final content = file.readAsStringSync();
       final map = _parseLockJson(content);
@@ -336,7 +360,9 @@ final class DaemonLauncher {
   }
 
   Future<void> _writeLockFile(int port, int pid) async {
-    await File(_lockFile).writeAsString(
+    final dir = await _jankdocDir();
+    await Directory(dir).create(recursive: true);
+    await File('$dir/$_lockFileName').writeAsString(
       '{"port":$port,"pid":$pid,"started":"${DateTime.now().toIso8601String()}"}',
     );
   }
