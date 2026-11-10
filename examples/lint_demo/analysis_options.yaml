@@ -1,0 +1,5 @@
+# Enables JankDoc live analysis for this project. In your own app use the
+# published package instead:  plugins: { jankdoc_lints: ^1.0.0-beta.1 }
+plugins:
+  jankdoc_lints:
+    path: ../../packages/jankdoc_lints

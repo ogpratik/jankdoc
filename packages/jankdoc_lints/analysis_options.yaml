@@ -1,0 +1,6 @@
+include: package:lints/recommended.yaml
+
+analyzer:
+  errors:
+    # test_reflective_loader discovers test_* methods by name.
+    non_constant_identifier_names: ignore

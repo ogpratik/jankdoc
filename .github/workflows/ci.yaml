@@ -80,6 +80,29 @@ jobs:
           path: packages/jankdoc/extension/devtools/build
           retention-days: 7
 
+  # ─── jankdoc_lints analyzer plugin (outside the workspace: Dart 3.11+) ────
+  lints:
+    name: jankdoc_lints plugin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Fetch deps
+        run: |
+          (cd packages/jankdoc_lints && dart pub get)
+          (cd examples/lint_demo && flutter pub get)
+      - name: Analyze
+        working-directory: packages/jankdoc_lints
+        run: dart analyze --fatal-warnings
+      - name: Rule tests
+        working-directory: packages/jankdoc_lints
+        run: dart test
+      - name: End-to-end against the real Flutter SDK (examples/lint_demo)
+        working-directory: packages/jankdoc_lints
+        run: dart run tool/check_demo.dart
+
   # ─── Daemon + CI binaries compile and smoke test ──────────────────────────
   daemon-compile:
     name: Compile daemon + CI binaries

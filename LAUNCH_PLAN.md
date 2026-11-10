@@ -406,6 +406,47 @@ Record material decisions here as we make them. Each entry: date, decision, rati
 
 Update this section at the end of each working session.
 
+### 2026-11-10 — release-readiness QA + live code analysis
+
+QA re-verified the plan's "done" claims by running everything for real.
+Fixed on branch `release/beta-readiness`:
+- **CI was red on every run** — it still installed Melos (removed from the
+  repo) on a bare Dart SDK that cannot resolve the Flutter workspace, and
+  `dart compile exe` now rejects the package (build hooks). Rewritten: Flutter
+  + pub workspace, 3.29.0 floor + stable matrix, `dart build cli`, extension
+  tests in Chrome, standalone-binary `/health` smoke test.
+- **macOS auto-start never worked** — the sandbox blocks spawning the daemon
+  ("Operation not permitted"); 1.4.x only ever tested a pre-started daemon.
+  Sample app debug builds are now unsandboxed.
+- **Daemon died after its app exited** (stdio piped to the dead app → broken
+  pipe on next log line), silently killing diagnosis for the run that reused
+  it. Now fully detached, logging to `~/.jankdoc/daemon.log`; lock file moved
+  from the app's cwd (it littered user projects) to `~/.jankdoc/daemon.lock`.
+- **Every rule-tier diagnosis without CPU samples was dropped** (`Bad state:
+  No element` on an empty `uiStack`). Fixed + regression test.
+- Extension: empty state overflowed the 300 px list panel; "2 diagnosises".
+- New `examples/sample_app/integration_test/e2e_test.dart` drives all three
+  screens against a real daemon.
+- **New: `packages/jankdoc_lints`** analyzer plugin — 7 rules, 3 quick fixes,
+  `jankdoc_check` (CLI + Claude Code hook). Verified through the real
+  analysis server: diagnostics appear 0.01–0.1 s after typing, fixes apply
+  cleanly; 0 false positives on the extension UI; catches all 3 sample-app
+  antipatterns.
+
+Still open before beta:
+- [ ] **DoD #6 not met**: e2e test shows the rule tier labels the sample
+  screens `heavy-compute-main-isolate` / `missing-const-constructor`, not the
+  three expected patterns. Rule conditions/ordering need tuning.
+- [ ] `binary_checksums.json` macos-arm64 hash is from a local build; CI
+  builds will not match → every download refused. Fill all four from the
+  release's `.sha256` files *after* 4.3.3 and *before* 4.2.10.
+- [ ] Repo `ogpratik/jankdoc` is private: binary downloads 404, pub.dev links
+  dead. Make public before 4.3.3.
+- [ ] `flutter analyze` does not show plugin diagnostics (exits first); docs
+  say `dart analyze`.
+- [ ] Tests write to the real `~/.jankdoc/sessions.db`.
+- [ ] Publish `jankdoc_lints` (needs pub.dev credential, like 4.2.8).
+
 ### 2026-05-22
 - Plan drafted and approved.
 - Phase 0 marked complete (all 13 foundation items verified done via audit).

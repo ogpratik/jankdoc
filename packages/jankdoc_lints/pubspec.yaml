@@ -1,0 +1,29 @@
+name: jankdoc_lints
+description: >-
+  Live JankDoc analysis for Flutter: flags jank-causing code (setState in
+  build, sync I/O on the UI thread, animated Opacity, non-lazy lists…) as you
+  type, in the IDE and in `dart analyze` / `flutter analyze`, with quick fixes.
+version: 1.0.0-beta.1
+homepage: https://github.com/ogpratik/jankdoc
+repository: https://github.com/ogpratik/jankdoc/tree/main/packages/jankdoc_lints
+issue_tracker: https://github.com/ogpratik/jankdoc/issues
+topics: [flutter, performance, lints, analyzer, jank]
+
+# Not a workspace member: the analyzer plugin API needs Dart 3.11+, while the
+# rest of the workspace supports Flutter 3.29 (Dart 3.7).
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  analysis_server_plugin: ^0.3.24
+  analyzer: ^14.5.0
+  analyzer_plugin: ^0.14.18
+
+dev_dependencies:
+  analyzer_testing: ^0.4.3
+  lints: ^6.0.0
+  test: ^1.26.0
+  test_reflective_loader: ^0.2.3
+
+executables:
+  jankdoc_check:

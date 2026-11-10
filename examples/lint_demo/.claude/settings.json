@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "dart run \"$CLAUDE_PROJECT_DIR/../../packages/jankdoc_lints/bin/jankdoc_check.dart\" --hook",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
+  }
+}

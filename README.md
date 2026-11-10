@@ -88,6 +88,23 @@ No `JankDoc.attach()` needed.
 
 ---
 
+## Live analysis while you (or your AI) write code
+
+[`jankdoc_lints`](packages/jankdoc_lints) is an analyzer plugin that flags
+jank-causing code as it is typed — `setState` in `build()`, sync I/O or
+`jsonDecode` during build, animated `Opacity`, per-item `AnimatedBuilder`,
+`Clip.antiAliasWithSaveLayer`, eager `ListView` children — with quick fixes.
+Findings show up in the IDE, in `dart analyze`, and therefore to AI coding
+agents; a Claude Code hook can check every edit the agent makes.
+
+```yaml
+# analysis_options.yaml (Dart 3.11+ / Flutter 3.41+)
+plugins:
+  jankdoc_lints: ^1.0.0-beta.1
+```
+
+---
+
 ## What you get
 
 ### Real-time diagnosis panel
