@@ -239,21 +239,16 @@ class McpServer {
         if (!File(file).existsSync()) {
           return _toolError('$file does not exist.');
         }
-        return _checkResult(
-          () => _checker.checkFile(File(file).resolveSymbolicLinksSync()),
-          file,
-        );
+        final real = File(file).resolveSymbolicLinksSync();
+        return _checkResult(() => _checker.checkFile(real), real);
       case 'check_project':
         final path = args['path'];
         final dir = _resolve(path is String && path.isNotEmpty ? path : '.');
         if (!Directory(dir).existsSync()) {
           return _toolError('$dir is not a directory.');
         }
-        return _checkResult(
-          () =>
-              _checker.checkProject(Directory(dir).resolveSymbolicLinksSync()),
-          dir,
-        );
+        final real = Directory(dir).resolveSymbolicLinksSync();
+        return _checkResult(() => _checker.checkProject(real), real);
       case 'explain_pattern':
         final id = args['pattern_id'];
         final explanation = id is String ? explainPattern(id) : null;
@@ -305,7 +300,8 @@ class McpServer {
     if (result.unverified.isNotEmpty) {
       text.write(
         '\n\nNote: ${result.unverified.length} file(s) could not be '
-        'confirmed fresh (syntax errors or part files); their results may '
+        'confirmed fresh (syntax errors, part files, or no Flutter '
+        'dependency); their results may '
         'lag the last edit.',
       );
     }

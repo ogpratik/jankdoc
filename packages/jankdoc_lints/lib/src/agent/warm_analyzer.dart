@@ -17,7 +17,7 @@
 // closed again so the server goes back to the file on disk.
 //
 // Files that cannot carry a probe (syntax errors, `part of` files, the rule
-// switched off) fall back to waiting for the server to go idle plus a short
+// switched off or ignored, packages without Flutter) fall back to waiting for the server to go idle plus a short
 // quiet period.
 import 'dart:async';
 import 'dart:convert';
@@ -29,6 +29,7 @@ import 'package:analyzer/dart/ast/ast.dart';
 
 import 'findings.dart';
 import 'lsp.dart';
+import 'project.dart';
 
 /// The `dart` executable to run tools with. `Platform.resolvedExecutable` is
 /// only `dart` when running on the VM (`dart run`, `pub global run`).
@@ -38,48 +39,7 @@ String dartExecutable() {
   return name == 'dart' || name == 'dart.exe' ? exe : 'dart';
 }
 
-/// The project a path belongs to: the nearest ancestor (or [path] itself)
-/// with both `pubspec.yaml` and `analysis_options.yaml`, else the nearest
-/// with `pubspec.yaml`.
-String? projectRootFor(String path) {
-  final start = FileSystemEntity.isDirectorySync(path)
-      ? Directory(path)
-      : File(path).parent;
-  String? pubspecOnly;
-  for (Directory? d = start.absolute; d != null; d = d.parent) {
-    final hasPubspec = File('${d.path}/pubspec.yaml').existsSync();
-    if (hasPubspec && File('${d.path}/analysis_options.yaml').existsSync()) {
-      return d.path;
-    }
-    if (hasPubspec) pubspecOnly ??= d.path;
-    if (d.parent.path == d.path) break;
-  }
-  return pubspecOnly;
-}
-
-/// The text of the analysis_options.yaml that applies to [path] (the nearest
-/// one in an enclosing directory), or null if there is none.
-String? analysisOptionsFor(String path) {
-  for (
-    Directory? d = FileSystemEntity.isDirectorySync(path)
-        ? Directory(path)
-        : File(path).parent;
-    d != null;
-    d = d.parent
-  ) {
-    final f = File('${d.path}/analysis_options.yaml');
-    if (f.existsSync()) return f.readAsStringSync();
-    if (d.parent.path == d.path) break;
-  }
-  return null;
-}
-
-/// Whether the jankdoc_lints plugin is enabled for [path].
-bool pluginEnabledFor(String path) =>
-    analysisOptionsFor(
-      path,
-    )?.contains(RegExp(r'^\s+jankdoc_lints\s*:', multiLine: true)) ??
-    false;
+final _ignoresAllLints = RegExp(r'ignore_for_file:[^\n]*type\s*=\s*lint');
 
 class WarmAnalyzer {
   WarmAnalyzer._(this.root, this._lsp) {
@@ -165,13 +125,14 @@ class WarmAnalyzer {
     final clock = Stopwatch()..start();
     final findings = <Finding>[];
     final unverified = <String>[];
+    final options = ProjectOptions();
     // Bounded batches keep the number of overlays (and the plugin's queue)
     // reasonable on big projects.
     for (var i = 0; i < paths.length; i += 64) {
       final batch = paths.sublist(i, (i + 64).clamp(0, paths.length));
       await Future.wait([
         for (final path in batch)
-          _checkOne(path).then((r) {
+          _checkOne(path, options).then((r) {
             findings.addAll(r.$1);
             if (!r.$2) unverified.add(path);
           }),
@@ -186,7 +147,10 @@ class WarmAnalyzer {
   }
 
   /// Returns the file's findings and whether a probe confirmed them.
-  Future<(List<Finding>, bool)> _checkOne(String path) async {
+  Future<(List<Finding>, bool)> _checkOne(
+    String path,
+    ProjectOptions options,
+  ) async {
     final String text;
     try {
       text = File(path).readAsStringSync();
@@ -194,10 +158,16 @@ class WarmAnalyzer {
       throw CheckException('Could not read $path: ${e.message}');
     }
     final uri = Uri.file(path).toString();
-    final probeRuleOff = RegExp(
-      r'clip_save_layer\s*:\s*(false|ignore)',
-    ).hasMatch(analysisOptionsFor(path) ?? '');
-    final probe = probeRuleOff ? null : Probe.build(text, ++_probeCount);
+    // `ignore_for_file: type=lint` (common in generated files) silences
+    // every JankDoc rule: nothing to wait for.
+    if (_ignoresAllLints.hasMatch(text)) return (const <Finding>[], true);
+    // The probe needs `dart:ui` and the clip_save_layer rule.
+    final canProbe =
+        options.isFlutterPackage(path) &&
+        !RegExp(
+          r'clip_save_layer\s*:\s*(false|ignore)',
+        ).hasMatch(options.analysisOptionsText(path) ?? '');
+    final probe = canProbe ? Probe.build(text, ++_probeCount) : null;
 
     final sent = DateTime.now();
     final Future<List<Map<String, Object?>>?> done = probe == null
@@ -326,10 +296,11 @@ class Probe {
 
   /// Builds a probe for [original], or returns null when it cannot carry one
   /// (syntax errors, `part of` files, or an `ignore_for_file` covering
-  /// `clip_save_layer`). [nonce] varies the probe line between checks so a
+  /// `clip_save_layer` or `type=lint`). [nonce] varies the probe line between checks so a
   /// late publish of an earlier probe is never mistaken for this one.
   static Probe? build(String original, int nonce) {
-    if (RegExp(r'ignore_for_file:[^\n]*clip_save_layer').hasMatch(original)) {
+    if (RegExp(r'ignore_for_file:[^\n]*clip_save_layer').hasMatch(original) ||
+        _ignoresAllLints.hasMatch(original)) {
       return null;
     }
     final ParseStringResult parsed;

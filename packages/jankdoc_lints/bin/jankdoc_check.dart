@@ -16,6 +16,7 @@ import 'dart:io';
 
 import 'package:jankdoc_lints/src/agent/findings.dart';
 import 'package:jankdoc_lints/src/agent/hook_endpoint.dart';
+import 'package:jankdoc_lints/src/agent/project.dart';
 
 Future<void> main(List<String> args) async {
   if (args.contains('--hook')) {
@@ -48,12 +49,13 @@ Future<int> _hook() async {
   if (file is! String || !file.endsWith('.dart') || !File(file).existsSync()) {
     return 0;
   }
-  final root =
-      _projectRoot(File(file).parent) ??
-      (event['cwd'] as String? ?? Directory.current.path);
+  // Symlink-resolved, so findings print relative to root.
+  final real = File(file).resolveSymbolicLinksSync();
+  final root = Directory(
+    projectRootFor(real) ?? event['cwd'] as String? ?? Directory.current.path,
+  ).resolveSymbolicLinksSync();
   final findings =
-      await checkViaRunningServer(File(file).resolveSymbolicLinksSync()) ??
-      await _analyze(root, [file]);
+      await checkViaRunningServer(real) ?? await _analyze(root, [real]);
   if (findings.isEmpty) return 0;
   stderr
     ..writeln(
@@ -63,18 +65,6 @@ Future<int> _hook() async {
     ..writeAll(findings.map((f) => f.format(root)), '\n')
     ..writeln();
   return 2;
-}
-
-/// Nearest ancestor containing analysis_options.yaml + pubspec.yaml.
-String? _projectRoot(Directory dir) {
-  for (Directory? d = dir; d != null; d = d.parent) {
-    if (File('${d.path}/pubspec.yaml').existsSync() &&
-        File('${d.path}/analysis_options.yaml').existsSync()) {
-      return d.path;
-    }
-    if (d.parent.path == d.path) break;
-  }
-  return null;
 }
 
 Future<List<Finding>> _analyze(String root, List<String> paths) async {

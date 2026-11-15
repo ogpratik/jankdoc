@@ -4,11 +4,19 @@ import 'dart:io';
 
 import 'findings.dart';
 import 'mcp_server.dart';
+import 'project.dart';
 import 'warm_analyzer.dart';
 
 const _notEnabled =
     'jankdoc_lints is not enabled for {path}. Add it to the project\'s root '
     'analysis_options.yaml:\n\nplugins:\n  jankdoc_lints: ^1.0.0-beta.1';
+
+CheckResult _noFindings(int filesChecked) => CheckResult(
+  findings: const [],
+  filesChecked: filesChecked,
+  elapsed: Duration.zero,
+  unverified: const [],
+);
 
 class WarmChecker implements Checker {
   WarmChecker({this.onStarted});
@@ -20,9 +28,12 @@ class WarmChecker implements Checker {
 
   @override
   Future<CheckResult> checkFile(String path) async {
-    if (!pluginEnabledFor(path)) {
+    final options = ProjectOptions();
+    if (!options.pluginEnabled(path)) {
       throw CheckException(_notEnabled.replaceAll('{path}', path));
     }
+    // The server never reports on excluded files; don't wait for it.
+    if (options.excluded(path)) return _noFindings(1);
     return (await _analyzerFor(path)).check([path]);
   }
 
@@ -33,12 +44,7 @@ class WarmChecker implements Checker {
       if (!pluginEnabledFor(directory)) {
         throw CheckException(_notEnabled.replaceAll('{path}', directory));
       }
-      return CheckResult(
-        findings: const [],
-        filesChecked: 0,
-        elapsed: Duration.zero,
-        unverified: const [],
-      );
+      return _noFindings(0);
     }
     return (await _analyzerFor(directory)).check(files);
   }
@@ -92,13 +98,14 @@ class WarmChecker implements Checker {
   }
 }
 
-/// The `.dart` files under [directory] that the plugin analyzes, skipping
-/// hidden directories (`.dart_tool`, `.git` …) and `build/`.
+/// The `.dart` files under [directory] that the plugin analyzes: skips
+/// files where it is not enabled, `analyzer: exclude:` matches, hidden
+/// directories (`.dart_tool`, `.git` …) and `build/`.
 List<String> dartFilesWithPlugin(String directory) {
+  final options = ProjectOptions();
   final out = <String>[];
-  void walk(Directory dir, bool enabled) {
-    final options = File('${dir.path}/analysis_options.yaml');
-    if (options.existsSync()) enabled = pluginEnabledFor(dir.path);
+  void walk(Directory dir) {
+    final enabled = options.pluginEnabled(dir.path);
     final List<FileSystemEntity> entries;
     try {
       entries = dir.listSync(followLinks: false)
@@ -109,13 +116,16 @@ List<String> dartFilesWithPlugin(String directory) {
     for (final e in entries) {
       final name = e.uri.pathSegments.lastWhere((s) => s.isNotEmpty);
       if (e is Directory) {
-        if (!name.startsWith('.') && name != 'build') walk(e, enabled);
-      } else if (e is File && enabled && name.endsWith('.dart')) {
+        if (!name.startsWith('.') && name != 'build') walk(e);
+      } else if (e is File &&
+          enabled &&
+          name.endsWith('.dart') &&
+          !options.excluded(e.path)) {
         out.add(e.path);
       }
     }
   }
 
-  walk(Directory(directory), pluginEnabledFor(directory));
+  walk(Directory(directory));
   return out;
 }

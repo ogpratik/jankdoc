@@ -22,7 +22,7 @@ import 'dart:io';
 import 'package:jankdoc_lints/src/agent/checker.dart';
 import 'package:jankdoc_lints/src/agent/hook_endpoint.dart';
 import 'package:jankdoc_lints/src/agent/mcp_server.dart';
-import 'package:jankdoc_lints/src/agent/warm_analyzer.dart';
+import 'package:jankdoc_lints/src/agent/findings.dart';
 
 Future<void> main(List<String> args) async {
   if (args.contains('-h') || args.contains('--help')) {
@@ -34,21 +34,32 @@ Future<void> main(List<String> args) async {
     return;
   }
   final positional = args.where((a) => !a.startsWith('-')).toList();
-  final cwd = Directory(
+  final given = Directory(
     positional.isNotEmpty ? positional.first : Directory.current.path,
-  ).absolute.path;
+  ).absolute;
+  // Symlink-resolved like the paths in findings, so they print relative.
+  final cwd = given.existsSync()
+      ? given.resolveSymbolicLinksSync()
+      : given.path;
 
   final endpoints = <HookEndpoint>[];
-  final checker = WarmChecker(
+  late final WarmChecker checker;
+  checker = WarmChecker(
     onStarted: (analyzer) async {
       stderr.writeln('jankdoc_mcp: analysis server ready for ${analyzer.root}');
       try {
         endpoints.add(
           await HookEndpoint.serve(
             analyzer.root,
-            (path) async => pluginEnabledFor(path)
-                ? (await analyzer.check([path])).findings
-                : const [],
+            // Through the checker, so not-enabled and excluded files
+            // answer at once.
+            (path) async {
+              try {
+                return (await checker.checkFile(path)).findings;
+              } on CheckException {
+                return const [];
+              }
+            },
           ),
         );
       } on Object catch (e) {
