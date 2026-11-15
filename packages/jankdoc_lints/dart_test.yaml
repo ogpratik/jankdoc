@@ -1,0 +1,4 @@
+tags:
+  # Runs the MCP server against examples/lint_demo with the real Flutter SDK;
+  # needs `flutter pub get` there first.
+  e2e:
