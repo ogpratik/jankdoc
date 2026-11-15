@@ -463,16 +463,13 @@ stable Flutter and `macos-15-intel`, `tool/build_binaries.sh` fixed, tests no
 longer touch `~/.jankdoc/sessions.db`, melos.yaml removed.
 
 Still open before beta:
-- [ ] Daemon releases are now `jankdoc-daemon-<ver>-<platform>.tar.gz` (the
-  full `dart build cli` bundle — the lone Linux executable cannot run) and
-  `binary_checksums.json` is empty, so every platform uses `dart run` until it
-  is filled. After tagging `daemon-v1.0.0` (4.3.3), run
-  `dart run tool/generate_checksums.dart --release daemon-v1.0.0` and commit
-  *before* publishing (4.2.10). Download → verify → extract → cache hit was
-  tested end-to-end against a local server; downloads without a checksum are
-  never executed.
-- [ ] Repo `ogpratik/jankdoc` is private: binary downloads 404, pub.dev links
-  dead. Make public before 4.3.3.
+- [x] Daemon releases are `jankdoc-daemon-<ver>-<platform>.tar.gz` (the full
+  `dart build cli` bundle). `daemon-v1.0.0` released 2026-11-15 for all four
+  platforms; `binary_checksums.json` filled from the release's `.sha256`
+  files. Verified: a fresh app downloads it from GitHub, verifies, extracts,
+  runs it, and the e2e test passes.
+- [x] Repo `ogpratik/jankdoc` made public 2026-11-15 (history audited for
+  secrets; superseded CI runs deleted).
 - [ ] `flutter analyze` does not show plugin diagnostics (exits first); docs
   say `dart analyze`.
 - [ ] Publish `jankdoc_lints` (needs pub.dev credential, like 4.2.8).

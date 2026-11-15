@@ -221,7 +221,7 @@ final class DaemonLauncher {
     final url =
         '$_kBinaryReleaseRepo/releases/download/daemon-v$_kDaemonVersion/$archiveName';
 
-    _log('Downloading JankDoc daemon (~10 MB)…\n  $url');
+    _log('Downloading JankDoc daemon (~3 MB)…\n  $url');
 
     final client = http.Client();
     try {
