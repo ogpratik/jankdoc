@@ -1,0 +1,13 @@
+{
+  "servers": {
+    "jankdoc": {
+      "type": "stdio",
+      "command": "dart",
+      "args": [
+        "run",
+        "${workspaceFolder}/../../packages/jankdoc_lints/bin/jankdoc_mcp.dart",
+        "${workspaceFolder}"
+      ]
+    }
+  }
+}

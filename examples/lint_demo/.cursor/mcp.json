@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "jankdoc": {
+      "command": "dart",
+      "args": [
+        "run",
+        "${workspaceFolder}/../../packages/jankdoc_lints/bin/jankdoc_mcp.dart",
+        "${workspaceFolder}"
+      ]
+    }
+  }
+}

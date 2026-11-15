@@ -64,25 +64,119 @@ diagnostics.
 
 ## AI coding agents
 
-Agents (Claude Code, Cursor, Copilot, …) see JankDoc findings anywhere they
-see analyzer output: IDE diagnostics, or `dart analyze` runs. Two ways to make
-it automatic:
+Agents see JankDoc findings anywhere they see analyzer output (IDE
+diagnostics, `dart analyze`). For agents that write code outside an IDE's
+diagnostics loop, JankDoc ships an **MCP server**, so any MCP-capable agent
+(Claude Code, OpenAI Codex CLI, Cursor, GitHub Copilot agent mode, Windsurf
+…) can check its own edits directly.
 
-**1. Tell the agent.** Add to your `AGENTS.md` / `CLAUDE.md`:
-
-```markdown
-After editing Dart files, run `dart analyze` and fix every
-`jankdoc_lints/*` warning before finishing.
-```
-
-**2. Claude Code hook — check every edit as it happens.** `jankdoc_check
---hook` analyzes each file Claude edits; if it finds jank-causing code it
-hands the findings straight back to Claude, which fixes them in the same
-turn. Install the command and add the hook to `.claude/settings.json`:
+### Install
 
 ```bash
 dart pub global activate jankdoc_lints
 ```
+
+Until it is on pub.dev, install from the repository instead:
+
+```bash
+dart pub global activate --source git https://github.com/ogpratik/jankdoc.git --git-path packages/jankdoc_lints
+```
+
+This puts `jankdoc_mcp` and `jankdoc_check` in `~/.pub-cache/bin` (add it to
+your `PATH`). The project must enable the plugin in its `analysis_options.yaml`
+(see [Install](#install)).
+
+### MCP server: `jankdoc_mcp`
+
+| Tool | Returns |
+| :--- | :--- |
+| `check_file(path)` | JankDoc findings for one `.dart` file as it is on disk: rule, `file:line:col`, message, fix, KB pattern id |
+| `check_project(path?)` | Findings for every `.dart` file under a directory (default: the server's working directory) |
+| `explain_pattern(pattern_id)` | The KB explanation, fix and before/after code for a rule (`non_lazy_list`) or KB id (`listview-non-lazy`) |
+
+The server keeps one `dart language-server` per project warm, so a check
+takes about 20–50 ms instead of the ~3 s a `dart analyze` run costs. The
+first check after startup waits for the analysis server and plugin to warm
+up (a few seconds; the server starts that as soon as it launches).
+Relative paths resolve against the server's working directory, or the
+directory passed as its only argument: `jankdoc_mcp [project_dir]`.
+
+Connect your agent (if a GUI editor can't find `jankdoc_mcp`, use the full
+path from `which jankdoc_mcp`):
+
+**Claude Code** — from your project directory:
+
+```bash
+claude mcp add jankdoc -- jankdoc_mcp
+```
+
+or share it with the team in `.mcp.json` at the project root:
+
+```json
+{
+  "mcpServers": {
+    "jankdoc": { "command": "jankdoc_mcp", "args": [] }
+  }
+}
+```
+
+**OpenAI Codex CLI** — `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.jankdoc]
+command = "jankdoc_mcp"
+```
+
+Codex starts the server in the directory you run `codex` from.
+
+**Cursor** — `.cursor/mcp.json` in the project (or `~/.cursor/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "jankdoc": { "command": "jankdoc_mcp", "args": ["${workspaceFolder}"] }
+  }
+}
+```
+
+**VS Code (GitHub Copilot agent mode)** — `.vscode/mcp.json`:
+
+```json
+{
+  "servers": {
+    "jankdoc": {
+      "type": "stdio",
+      "command": "jankdoc_mcp",
+      "args": ["${workspaceFolder}"]
+    }
+  }
+}
+```
+
+**Windsurf** — `~/.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "jankdoc": { "command": "jankdoc_mcp", "args": ["/path/to/your/app"] }
+  }
+}
+```
+
+Then tell the agent to use it — add to your `AGENTS.md` / `CLAUDE.md`:
+
+```markdown
+After editing Dart files, call the JankDoc `check_file` tool on each edited
+file and fix every finding before finishing (`explain_pattern` explains
+one). Without the tool, run `dart analyze` and fix every `jankdoc_lints/*`
+warning.
+```
+
+### Claude Code hook: check every edit as it happens
+
+`jankdoc_check --hook` analyzes each file Claude edits; if it finds
+jank-causing code it hands the findings straight back to Claude, which fixes
+them in the same turn. Add the hook to `.claude/settings.json`:
 
 ```json
 {
@@ -99,12 +193,20 @@ dart pub global activate jankdoc_lints
 }
 ```
 
+If `jankdoc_mcp` is also running for the project, the hook asks it instead
+of starting `dart analyze`, so each edit costs about 0.3 s instead of ~3 s.
+(The server advertises itself to the hook through
+`.dart_tool/jankdoc_lints/mcp_endpoint.json`, a loopback port plus a random
+token; it only checks files inside its project.)
+
 `jankdoc_check [paths]` without `--hook` prints only JankDoc findings and
-exits 1 if there are any — handy for agents without hooks, and for CI.
+exits 1 if there are any — handy for agents without MCP or hooks, and for CI.
 
 ## Try it
 
 [`examples/lint_demo`](../../examples/lint_demo) has one bad and one fixed
-example per rule, plus a ready-made Claude Code hook. From
+example per rule, plus ready-made MCP configs (`.mcp.json`,
+`.cursor/mcp.json`, `.vscode/mcp.json`) and a Claude Code hook. From
 `packages/jankdoc_lints`, `dart run tool/check_demo.dart` asserts the plugin
-reports exactly the expected diagnostics there.
+reports exactly the expected diagnostics there, and `dart test -t e2e` runs
+the MCP server against it.

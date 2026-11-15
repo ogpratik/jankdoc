@@ -103,12 +103,15 @@ jobs:
       - name: Analyze
         working-directory: packages/jankdoc_lints
         run: dart analyze --fatal-warnings
-      - name: Rule tests
+      - name: Rule + MCP protocol tests
         working-directory: packages/jankdoc_lints
-        run: dart test
+        run: dart test -x e2e
       - name: End-to-end against the real Flutter SDK (examples/lint_demo)
         working-directory: packages/jankdoc_lints
         run: dart run tool/check_demo.dart
+      - name: MCP server end-to-end (warm language server, examples/lint_demo)
+        working-directory: packages/jankdoc_lints
+        run: dart test -t e2e --reporter expanded
 
   # ─── VS Code companion extension (TypeScript) ──────────────────────────────
   vscode:

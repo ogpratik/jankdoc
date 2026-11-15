@@ -8,19 +8,14 @@
 //                              them and fixes the code in the same turn.
 //
 // Runs `dart analyze --format=json`, so it needs `jankdoc_lints` enabled under
-// `plugins:` in the project's analysis_options.yaml.
+// `plugins:` in the project's analysis_options.yaml. With --hook, if a
+// jankdoc_mcp server is running for the project it asks that instead: its
+// analysis is already warm, so the check takes milliseconds, not seconds.
 import 'dart:convert';
 import 'dart:io';
 
-const _rules = {
-  'setstate_in_build',
-  'sync_io_in_build',
-  'json_decode_in_build',
-  'animated_opacity_widget',
-  'animated_builder_per_item',
-  'clip_save_layer',
-  'non_lazy_list',
-};
+import 'package:jankdoc_lints/src/agent/findings.dart';
+import 'package:jankdoc_lints/src/agent/hook_endpoint.dart';
 
 Future<void> main(List<String> args) async {
   if (args.contains('--hook')) {
@@ -29,7 +24,7 @@ Future<void> main(List<String> args) async {
   final paths = args.where((a) => !a.startsWith('-')).toList();
   final findings = await _analyze(Directory.current.path, paths);
   for (final f in findings) {
-    stdout.writeln(f);
+    stdout.writeln(f.format(Directory.current.path));
   }
   stdout.writeln(
     findings.isEmpty
@@ -56,14 +51,16 @@ Future<int> _hook() async {
   final root =
       _projectRoot(File(file).parent) ??
       (event['cwd'] as String? ?? Directory.current.path);
-  final findings = await _analyze(root, [file]);
+  final findings =
+      await checkViaRunningServer(File(file).resolveSymbolicLinksSync()) ??
+      await _analyze(root, [file]);
   if (findings.isEmpty) return 0;
   stderr
     ..writeln(
       'JankDoc found jank-causing code in $file. '
       'Fix these before continuing:',
     )
-    ..writeAll(findings, '\n')
+    ..writeAll(findings.map((f) => f.format(root)), '\n')
     ..writeln();
   return 2;
 }
@@ -80,7 +77,7 @@ String? _projectRoot(Directory dir) {
   return null;
 }
 
-Future<List<String>> _analyze(String root, List<String> paths) async {
+Future<List<Finding>> _analyze(String root, List<String> paths) async {
   final result = await Process.run(Platform.resolvedExecutable, [
     'analyze',
     '--format=json',
@@ -94,18 +91,6 @@ Future<List<String>> _analyze(String root, List<String> paths) async {
       .cast<Map<String, Object?>>();
   return [
     for (final d in diagnostics)
-      if (_rules.contains(d['code'])) _format(d, root),
+      if (jankdocRules.containsKey(d['code'])) Finding.fromAnalyzeJson(d),
   ];
-}
-
-String _format(Map<String, Object?> d, String root) {
-  final location = d['location'] as Map<String, Object?>;
-  final start =
-      (location['range'] as Map<String, Object?>)['start']
-          as Map<String, Object?>;
-  var file = location['file'] as String;
-  if (file.startsWith('$root/')) file = file.substring(root.length + 1);
-  return '$file:${start['line']}:${start['column']} '
-      '[jankdoc_lints/${d['code']}] ${d['problemMessage']}\n'
-      '    fix: ${d['correctionMessage']}';
 }

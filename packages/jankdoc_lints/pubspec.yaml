@@ -27,3 +27,4 @@ dev_dependencies:
 
 executables:
   jankdoc_check:
+  jankdoc_mcp:
