@@ -4,6 +4,9 @@ import '../models/rule.dart';
 /// Rules for raster thread / GPU antipatterns.
 const List<Rule> rasterRules = [
   Rule(
+    // Rules only see over-budget frames, so with RasterDominant the raster
+    // floor is a sanity check: 5 ms keeps 120 Hz displays (8.3 ms budget) in
+    // scope. The widget signals come from the collector's layer census.
     id: 'raster-overdraw-opacity',
     patternId: 'raster-overdraw-opacity',
     confidence: 0.90,
@@ -11,7 +14,7 @@ const List<Rule> rasterRules = [
     priority: 10,
     condition: And([
       RasterDominant(),
-      RasterThreadMs(greaterThan: 8.0),
+      RasterThreadMs(greaterThan: 5.0),
       Or([
         WidgetType('Opacity'),
         StackContains('saveLayer'),
@@ -26,7 +29,7 @@ const List<Rule> rasterRules = [
     priority: 9,
     condition: And([
       RasterDominant(),
-      RasterThreadMs(greaterThan: 8.0),
+      RasterThreadMs(greaterThan: 5.0),
       Or([
         WidgetType('ClipRRect'),
         WidgetType('ClipPath'),

@@ -90,7 +90,9 @@ final class VmServiceClient {
             startUs,
             endUs - startUs, // extent, not end
           )
-          .timeout(const Duration(milliseconds: 500));
+          // The response carries the VM's whole function table; in debug
+          // mode it routinely takes 1-3 s. A shorter timeout drops every stack.
+          .timeout(const Duration(seconds: 5));
 
       return _parseCpuSamples(samples, maxFrames: maxFrames);
     } catch (_) {

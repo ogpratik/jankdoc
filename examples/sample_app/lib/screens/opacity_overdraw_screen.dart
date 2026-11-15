@@ -43,32 +43,45 @@ class _OpacityOverdrawScreenState extends State<OpacityOverdrawScreen>
         body: AnimatedBuilder(
           animation: _controller,
           builder: (context, _) => GridView.builder(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(8),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
+              crossAxisCount: 10,
+              mainAxisSpacing: 4,
+              crossAxisSpacing: 4,
             ),
-            itemCount: 60,
-            // Bad: Opacity forces a saveLayer for each subtree every frame,
-            // saturating the raster thread.
-            itemBuilder: (context, index) => Opacity(
-              opacity: (_controller.value + (index * 0.02)) % 1.0,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.primaries[index % Colors.primaries.length],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  '$index',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+            itemCount: 600,
+            // Bad: every Opacity forces a saveLayer for its subtree on every
+            // frame; nested and repeated across the grid they saturate the
+            // raster thread.
+            itemBuilder: (context, index) {
+              final fade = (_controller.value + (index * 0.02)) % 1.0;
+              return Opacity(
+                opacity: fade,
+                child: Opacity(
+                  opacity: 1.0 - fade / 2,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: [
+                        Colors.primaries[index % Colors.primaries.length],
+                        Colors.primaries[(index + 5) % Colors.primaries.length],
+                      ]),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    alignment: Alignment.center,
+                    child: Opacity(
+                      opacity: fade,
+                      child: Text(
+                        '$index',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
         ),
       );

@@ -80,5 +80,7 @@ Future<void> _listenForPatterns(HttpClient client, Set<String> seen) async {
     } on FormatException {
       // [DONE] sentinels and keep-alives are not JSON.
     }
-  });
+  }).catchError((Object _) {
+    // Teardown force-closes the client mid-stream; that ends the listener.
+  }, test: (e) => e is HttpException);
 }

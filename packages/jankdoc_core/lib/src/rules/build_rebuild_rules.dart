@@ -9,9 +9,11 @@ const List<Rule> buildRebuildRules = [
     confidence: 0.95,
     severity: Severity.high,
     priority: 10,
+    // No list-widget condition: a ListView/GridView does not itself rebuild
+    // when its items' AnimatedBuilders tick, so it never shows up in the
+    // rebuild counts of the frames this rule is meant to catch.
     condition: And([
       WidgetType('AnimatedBuilder'),
-      AnyWidgetType(['ListView', 'GridView', 'SliverList', 'SliverGrid']),
       RebuildStorm(widgetType: 'AnimatedBuilder', factor: 1.5),
     ]),
   ),

@@ -40,7 +40,9 @@ const List<Rule> asyncRules = [
     patternId: 'heavy-compute-main-isolate',
     confidence: 0.87,
     severity: Severity.high,
-    priority: 12,
+    // Catch-all for any slow UI-bound frame: evaluated after every rule that
+    // names a specific cause, so it never masks one.
+    priority: 1,
     condition: And([
       UiDominant(factor: 2.0),
       UiThreadMs(greaterThan: 16.0),

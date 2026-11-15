@@ -50,6 +50,10 @@ Future<void> main(List<String> args) async {
         negatable: false,
         help: 'Disable remote KB registry checks. '
             'The daemon will only use locally cached bundles.')
+    ..addOption('record',
+        valueHelp: 'file',
+        help: 'Append every received telemetry batch to <file> as JSON Lines. '
+            'Replay it later with `jankdoc:ci --input <file>`.')
     ..addFlag('help', abbr: 'h', negatable: false, help: 'Print this help.');
 
   final results = parser.parse(args);
@@ -69,6 +73,11 @@ Future<void> main(List<String> args) async {
   final embedModelId = results['embed-model'] as String;
   final noRegistry = results['no-kb-registry'] as bool;
   final kbRegistryUrl = noRegistry ? null : (results['kb-registry'] as String?);
+  final recordPath = results['record'] as String?;
+  final recordSink = recordPath == null
+      ? null
+      : (File(recordPath)..createSync(recursive: true))
+          .openWrite(mode: FileMode.append);
 
   // ── Already-running guard ──────────────────────────────────────────────────
   // If a healthy daemon is already listening on this port, exit cleanly.
@@ -173,7 +182,8 @@ Future<void> main(List<String> args) async {
     ..post(
         '/telemetry/batch',
         (Request r) =>
-            _ingestBatch(r, telemetryQueue, sessionRepo, _seenSessions))
+            _ingestBatch(r, telemetryQueue, sessionRepo, _seenSessions,
+                recordSink: recordSink))
     ..get('/diagnoses/stream',
         (Request r) => _streamDiagnoses(r, pipeline, telemetryQueue))
     ..get('/sessions', (Request r) => _listSessions(r, sessionRepo))
@@ -286,8 +296,9 @@ Future<Response> _ingestBatch(
   Request request,
   TelemetryQueue queue,
   SessionRepository sessionRepo,
-  Set<String> seenSessions,
-) async {
+  Set<String> seenSessions, {
+  IOSink? recordSink,
+}) async {
   final body = await request.readAsString();
   final decoded = _decodeJson(body);
   if (decoded == null) {
@@ -296,6 +307,7 @@ Future<Response> _ingestBatch(
       headers: _jsonHeaders,
     );
   }
+  recordSink?.writeln(jsonEncode(decoded));
 
   final batch = TelemetryBatch.fromJson(decoded as Map<String, dynamic>);
 

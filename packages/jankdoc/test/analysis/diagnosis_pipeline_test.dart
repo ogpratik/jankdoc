@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:jankdoc/src/analysis/diagnosis_pipeline.dart';
@@ -123,14 +124,18 @@ DiagnosisPipeline buildPipeline({
 
 void main() {
   late SessionRepository repo;
+  late Directory tmp;
 
   setUp(() {
-    // Opens (or re-uses) ~/.jankdoc/sessions.db.
-    // Each test uses unique IDs to avoid row collisions.
-    repo = SessionRepository();
+    // A throwaway database — never the developer's ~/.jankdoc/sessions.db.
+    tmp = Directory.systemTemp.createTempSync('jankdoc_pipeline_test');
+    repo = SessionRepository(overrideDbPath: '${tmp.path}/sessions.db');
   });
 
-  tearDown(() => repo.dispose());
+  tearDown(() {
+    repo.dispose();
+    tmp.deleteSync(recursive: true);
+  });
 
   group('DiagnosisPipeline', () {
     // 1. Rule match → diagnosis yielded and saveDiagnosis called.

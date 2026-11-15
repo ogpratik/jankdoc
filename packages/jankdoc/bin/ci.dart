@@ -6,7 +6,8 @@
 ///   cat telemetry.json | dart run bin/ci.dart
 ///
 /// Stdin mode: reads a single TelemetryBatch JSON from stdin.
-/// File mode:  reads from --input (single batch or JSON array of batches).
+/// File mode:  reads from --input (single batch, JSON array of batches, or
+///             JSON Lines as written by `daemon --record`).
 /// Eval mode:  runs the built-in eval fixture suite and reports pass/fail.
 ///
 /// Exit codes:
@@ -90,7 +91,8 @@ Future<void> main(List<String> args) async {
     if (verbose) {
       stderr.writeln(
         '[JankDoc] ${match.rule.severity.name.toUpperCase()} '
-        '${match.rule.id} @ ${userFrame?.file}:${userFrame?.line} '
+        '${match.rule.id} @ '
+        '${userFrame == null ? '(no source location)' : '${userFrame.file}:${userFrame.line}'} '
         '(ui:${frame.uiThreadMs.toStringAsFixed(1)}ms, '
         'raster:${frame.rasterThreadMs.toStringAsFixed(1)}ms)',
       );
@@ -134,7 +136,17 @@ Future<List<TelemetryBatch>?> _loadBatches(String? inputPath) async {
   }
 
   try {
-    final decoded = jsonDecode(raw);
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(raw);
+    } on FormatException {
+      // Not a single JSON document — try JSON Lines (`daemon --record`).
+      return [
+        for (final l in const LineSplitter().convert(raw))
+          if (l.trim().isNotEmpty)
+            TelemetryBatch.fromJson(jsonDecode(l) as Map<String, dynamic>),
+      ];
+    }
     if (decoded is List) {
       return decoded
           .cast<Map<String, dynamic>>()

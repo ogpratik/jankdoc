@@ -21,16 +21,13 @@ abstract final class DeviceInfoResolver {
     final platform = _targetPlatform();
     final dartVersion = _dartVersion();
 
-    String flutterVersion = '';
-    if (vmService != null) {
-      try {
-        final vmRef = await vmService.getVM();
-        // The Dart VM banner looks like: "Dart VM version: 3.6.0 (stable) ..."
-        // The Flutter SDK version is not exposed by the standard VM Service.
-        // We store the Dart version here; the daemon enriches it via context.
-        flutterVersion = _parseVersion(vmRef.version ?? '');
-      } catch (_) {}
-    }
+    // `flutter run`/`flutter build` define FLUTTER_VERSION (the source of
+    // FlutterVersion.version, which is newer than our 3.29 floor). The VM
+    // banner only carries the Dart version, so there is no other source;
+    // report nothing rather than the Dart version.
+    const flutterVersion = bool.hasEnvironment('FLUTTER_VERSION')
+        ? String.fromEnvironment('FLUTTER_VERSION')
+        : '';
 
     final impellerEnabled = await _detectImpeller(
       platform,
