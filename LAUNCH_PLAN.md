@@ -481,7 +481,7 @@ Still open before beta:
 - Plan drafted and approved.
 - Phase 0 marked complete (all 13 foundation items verified done via audit).
 - **Phase 1.1.1–1.1.6 complete**:
-  - Created `/Users/pratikpandey/Documents/Development/jankdoc-kb/` as a sibling Dart package with its own `pubspec.yaml`, `analysis_options.yaml`, and `.gitignore`.
+  - Created `../jankdoc-kb/` (sibling repo, now [ogpratik/jankdoc-kb](https://github.com/ogpratik/jankdoc-kb)) as a sibling Dart package with its own `pubspec.yaml`, `analysis_options.yaml`, and `.gitignore`.
   - Wrote `SCHEMA.md` documenting the canonical KB entry YAML format.
   - Migrated all 26 entries from `kb_catalog.dart` → `entries/<category>/<id>.yaml` via `packages/jankdoc/tool/migrate_catalog_to_yaml.dart`.
   - Verified migration with round-trip checker `packages/jankdoc/tool/verify_yaml_roundtrip.dart` — all 26 entries reconstruct to byte-identical canonical JSON.
