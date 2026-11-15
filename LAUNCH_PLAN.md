@@ -433,10 +433,36 @@ Fixed on branch `release/beta-readiness`:
   cleanly; 0 false positives on the extension UI; catches all 3 sample-app
   antipatterns.
 
+### 2026-11-15 — rule tier verified on real telemetry (DoD #6 met)
+
+Recorded real batches (`daemon --record`) and found why the sample screens
+were mislabelled:
+- CPU-sample capture timed out at 500 ms (it takes 1–3 s in debug), so every
+  frame had an empty stack — and the capture ran on the UI isolate, causing
+  the very jank it then reported as `heavy-compute-main-isolate`. Now one
+  capture at a time, 2 s cooldown, UI-bound frames only, 5 s timeout.
+- `heavy-compute-main-isolate` (any slow UI frame) outranked specific rules;
+  now priority 1 (last resort).
+- `animated-builder-rebuild-storm` required a list widget in rebuild counts,
+  which never happens (lists don't rebuild when items tick). Dropped.
+- `raster-overdraw-opacity` keyed on `Opacity` in rebuild counts / `saveLayer`
+  in the UI stack — neither can occur. New layer census counts saveLayer-forcing
+  render objects on raster-bound frames; raster floor 8 → 5 ms (120 Hz).
+- `setstate-in-build`: the collector now detects setState scheduled from a
+  post-frame callback on consecutive frames and attaches that stack.
+- `flutter_version` reported the Dart version; now from `FLUTTER_VERSION`.
+- Sample screen C made genuinely raster-heavy (it did not jank on M-series).
+
+`examples/sample_app/integration_test/e2e_test.dart` passes: all three
+screens produce their expected diagnosis. Recorded batches are pinned in
+`packages/jankdoc/test/analysis/recorded_telemetry_test.dart`.
+
+Also: CI fixed for Flutter 3.50 (material.dart deprecation infos), VS Code
+extension compiled for the first time (TS error) + CI job, release workflow on
+stable Flutter and `macos-15-intel`, `tool/build_binaries.sh` fixed, tests no
+longer touch `~/.jankdoc/sessions.db`, melos.yaml removed.
+
 Still open before beta:
-- [ ] **DoD #6 not met**: e2e test shows the rule tier labels the sample
-  screens `heavy-compute-main-isolate` / `missing-const-constructor`, not the
-  three expected patterns. Rule conditions/ordering need tuning.
 - [ ] `binary_checksums.json` macos-arm64 hash is from a local build; CI
   builds will not match → every download refused. Fill all four from the
   release's `.sha256` files *after* 4.3.3 and *before* 4.2.10.
@@ -444,7 +470,6 @@ Still open before beta:
   dead. Make public before 4.3.3.
 - [ ] `flutter analyze` does not show plugin diagnostics (exits first); docs
   say `dart analyze`.
-- [ ] Tests write to the real `~/.jankdoc/sessions.db`.
 - [ ] Publish `jankdoc_lints` (needs pub.dev credential, like 4.2.8).
 
 ### 2026-05-22

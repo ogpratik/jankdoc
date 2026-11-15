@@ -44,11 +44,26 @@ ollama pull nomic-embed-text
 
 ### 2. Add to your Flutter app
 
+Until the packages are on pub.dev, depend on this repository directly.
+`jankdoc_core` needs the override because `jankdoc` would otherwise look for
+it on pub.dev:
+
 ```yaml
 # pubspec.yaml
 dev_dependencies:
-  jankdoc: ^1.0.0
+  jankdoc:
+    git:
+      url: https://github.com/ogpratik/jankdoc.git
+      path: packages/jankdoc
+
+dependency_overrides:
+  jankdoc_core:
+    git:
+      url: https://github.com/ogpratik/jankdoc.git
+      path: packages/jankdoc_core
 ```
+
+(Once published: `dev_dependencies: jankdoc: ^1.0.0-beta.1`.)
 
 ```dart
 // lib/main.dart
@@ -68,6 +83,12 @@ flutter run
 
 The daemon starts automatically. Open DevTools → **JankDoc** tab.
 
+`JankDoc.attach()` uses a cached daemon binary, downloads one from the
+GitHub release, or falls back to `dart run jankdoc:daemon` (slower first
+start, same behaviour). On macOS, debug builds must not be sandboxed — set
+`com.apple.security.app-sandbox` to `false` in
+`macos/Runner/DebugProfile.entitlements`, as `examples/sample_app` does.
+
 ### 4. Stuck? Run the doctor.
 
 ```bash
@@ -81,10 +102,14 @@ a copy-pasteable fix for every failing check.
 
 ## VS Code users: zero-code-change setup
 
-Install the [JankDoc VS Code extension](https://marketplace.visualstudio.com/items?itemName=ogpratik.jankdoc).
+The companion extension in [`jankdoc-vscode`](jankdoc-vscode) starts and
+stops the daemon with your Flutter debug session, so no `JankDoc.attach()` is
+needed. It is not on the Marketplace yet; build and install it locally:
 
-The daemon starts and stops automatically with your Flutter debug session.
-No `JankDoc.attach()` needed.
+```bash
+cd jankdoc-vscode && npm install && npx @vscode/vsce package
+code --install-extension jankdoc-*.vsix
+```
 
 ---
 
@@ -100,8 +125,14 @@ agents; a Claude Code hook can check every edit the agent makes.
 ```yaml
 # analysis_options.yaml (Dart 3.11+ / Flutter 3.41+)
 plugins:
-  jankdoc_lints: ^1.0.0-beta.1
+  jankdoc_lints:
+    path: /path/to/jankdoc/packages/jankdoc_lints   # until it is on pub.dev
 ```
+
+Run `dart analyze` (not `flutter analyze`, which exits before plugin results
+arrive). See [`packages/jankdoc_lints`](packages/jankdoc_lints) for the rule
+list, quick fixes, and the AI-agent hook; [`examples/lint_demo`](examples/lint_demo)
+shows every rule firing.
 
 ---
 
@@ -141,6 +172,10 @@ dart run jankdoc:ci --threshold critical=0,high=5
 ```
 
 Outputs a **SARIF 2.1.0** report that GitHub renders as Code Scanning alerts directly on your PR diff.
+
+To get telemetry to analyse, record a real session: start the daemon with
+`dart run jankdoc:daemon --record session.jsonl`, run your app, then
+`dart run jankdoc:ci --input session.jsonl`.
 
 ```yaml
 # .github/workflows/ci.yaml
@@ -195,8 +230,10 @@ packages/
   jankdoc/            → Published package + analysis daemon + doctor.
   jankdoc_extension/  → Flutter DevTools extension (web UI).
   jankdoc_eval/       → Eval harness (pure Dart, no Ollama required).
+  jankdoc_lints/      → Analyzer plugin: live warnings + quick fixes in the IDE.
 examples/
   sample_app/         → Minimal Flutter app that triggers 3 jank antipatterns.
+  lint_demo/          → One example per jankdoc_lints rule.
 jankdoc-vscode/       → VS Code companion extension (TypeScript).
 ```
 
@@ -213,11 +250,14 @@ work at the root:
 # Fetch all workspace deps
 flutter pub get
 
-# Run all Dart tests
-dart test packages/jankdoc packages/jankdoc_core packages/jankdoc_eval
+# Tests
+(cd packages/jankdoc && flutter test)
+(cd packages/jankdoc_eval && dart test)
+(cd packages/jankdoc_extension && flutter test --platform chrome)
+(cd packages/jankdoc_lints && dart test && dart run tool/check_demo.dart)
 
-# Run Flutter tests (the extension + sample_app widgets)
-flutter test
+# End-to-end: drives all three sample screens against a real daemon (macOS)
+(cd examples/sample_app && flutter test integration_test/e2e_test.dart -d macos)
 
 # Run the sample app
 cd examples/sample_app && flutter run

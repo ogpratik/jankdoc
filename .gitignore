@@ -10,8 +10,6 @@ build/
 pubspec.lock
 doc/api/
 
-# JankDoc runtime
-~/.jankdoc/
 
 # IDE
 .idea/
@@ -20,9 +18,6 @@ doc/api/
 *.iws
 .DS_Store
 .vscode/settings.json
-
-# Melos
-.melos_tool/
 
 # Eval
 packages/jankdoc_eval/test_apps/**/build/
@@ -33,3 +28,7 @@ jankdoc-vscode/node_modules/
 jankdoc-vscode/out/
 jankdoc-vscode/*.vsix
 packages/jankdoc/bin/jankdoc_daemon
+
+# Local tool settings (per-developer)
+.claude/settings.local.json
+.claude/worktrees/

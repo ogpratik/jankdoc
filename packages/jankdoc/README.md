@@ -13,7 +13,7 @@ line, and fix. No cloud, no telemetry leaves your machine.
 ```yaml
 # pubspec.yaml
 dev_dependencies:
-  jankdoc: ^1.0.0
+  jankdoc: ^1.0.0-beta.1
 ```
 
 ```dart

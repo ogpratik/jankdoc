@@ -1,5 +1,9 @@
 # Melos monorepo with five packages
 
+> **Superseded:** the repo now uses a Dart pub workspace (root `pubspec.yaml`
+> `workspace:`) instead of Melos. The package boundaries below still apply.
+
+
 JankDoc is organised as a Melos monorepo. Each package has a single, clearly bounded responsibility. Internal packages are not published to pub.dev; only `jankdoc` is.
 
 ```
