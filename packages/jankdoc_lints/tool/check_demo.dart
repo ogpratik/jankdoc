@@ -2,7 +2,8 @@
 //
 // Runs `dart analyze` in examples/lint_demo (where the plugin is enabled) and
 // asserts JankDoc reports exactly the `// expect: <rule>` lines of
-// lib/bad.dart and nothing anywhere else.
+// lib/bad.dart and nothing anywhere else. Info-level diagnostics are ignored:
+// SDK deprecation notices differ between Flutter versions.
 //
 //   dart run tool/check_demo.dart [path/to/lint_demo]
 import 'dart:convert';
@@ -32,6 +33,7 @@ Future<void> main(List<String> args) async {
   final json = jsonDecode(out.substring(out.indexOf('{'))) as Map;
   final actual = <String>{};
   for (final d in (json['diagnostics'] as List).cast<Map>()) {
+    if (d['severity'] == 'INFO') continue;
     final location = d['location'] as Map;
     final line = ((location['range'] as Map)['start'] as Map)['line'];
     final file = (location['file'] as String).substring(demo.path.length + 1);

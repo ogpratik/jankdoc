@@ -95,7 +95,8 @@ async function startDaemon(): Promise<void> {
   const binary = findDaemonBinary();
   if (!binary) {
     const msg =
-      'JankDoc daemon binary not found. Run `melos run daemon:build` first.';
+      'JankDoc daemon binary not found. Add `await JankDoc.attach()` to ' +
+      'main() (it downloads the daemon) or run `dart run jankdoc:daemon`.';
     outputChannel.appendLine(`[JankDoc] ${msg}`);
     vscode.window.showWarningMessage(`JankDoc: ${msg}`);
     updateStatusBar('error');
@@ -156,7 +157,7 @@ function stopDaemon(): void {
 type StatusKind = 'idle' | 'connecting' | 'connected' | 'error';
 
 function updateStatusBar(status: StatusKind): void {
-  const [icon, text, color] = statusMap[status];
+  const [icon, text] = statusMap[status];
   statusBarItem.text = `${icon} JankDoc${text ? `: ${text}` : ''}`;
   statusBarItem.backgroundColor =
     status === 'error'
@@ -166,14 +167,13 @@ function updateStatusBar(status: StatusKind): void {
     status === 'connected'
       ? new vscode.ThemeColor('statusBarItem.prominentForeground')
       : undefined;
-  _ = color; // suppress unused-variable warning
 }
 
-const statusMap: Record<StatusKind, [string, string, string]> = {
-  idle:       ['$(pulse)', '', ''],
-  connecting: ['$(sync~spin)', 'connecting', ''],
-  connected:  ['$(check)', 'connected', 'green'],
-  error:      ['$(error)', 'error', 'red'],
+const statusMap: Record<StatusKind, [string, string]> = {
+  idle:       ['$(pulse)', ''],
+  connecting: ['$(sync~spin)', 'connecting'],
+  connected:  ['$(check)', 'connected'],
+  error:      ['$(error)', 'error'],
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

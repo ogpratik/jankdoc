@@ -50,12 +50,20 @@ VERSION="$(grep '^version:' "$REPO_ROOT/packages/jankdoc/pubspec.yaml" | awk '{p
 echo "[build] jankdoc v$VERSION — platform: $PLATFORM"
 
 # ── Ensure workspace deps are resolved ────────────────────────────────────────
+# `jankdoc` depends on the Flutter SDK, so a bare `dart pub get` cannot
+# resolve the workspace.
 echo "[build] resolving dependencies..."
-(cd "$REPO_ROOT" && dart pub get --no-example 2>/dev/null || true)
+(cd "$REPO_ROOT" && flutter pub get)
 
 # ── Compile ───────────────────────────────────────────────────────────────────
+# `dart compile exe` rejects packages with build hooks (objective_c, pulled in
+# transitively), so build with `dart build cli` and take the executable out of
+# its bundle — it runs standalone, as release.yaml ships it.
 echo "[build] compiling $DAEMON_ENTRYPOINT → $OUT_PATH"
-dart compile exe "$DAEMON_ENTRYPOINT" -o "$OUT_PATH"
+BUILD_DIR="$(mktemp -d)"
+(cd "$REPO_ROOT/packages/jankdoc" && dart build cli -t bin/daemon.dart -o "$BUILD_DIR")
+cp "$BUILD_DIR/bundle/bin/daemon" "$OUT_PATH"
+rm -rf "$BUILD_DIR"
 
 # ── Checksum ──────────────────────────────────────────────────────────────────
 if command -v sha256sum >/dev/null 2>&1; then
@@ -77,4 +85,4 @@ echo "[build] Next steps:"
 echo "  1. Run this script on other platforms (macOS x64, Linux x64)"
 echo "  2. dart run tool/generate_checksums.dart"
 echo "  3. git add packages/jankdoc/assets/binary_checksums.json && git commit"
-echo "  4. gh release upload v$VERSION $OUT_PATH"
+echo "  4. Prefer the release workflow: git tag daemon-v<version> && git push --tags"

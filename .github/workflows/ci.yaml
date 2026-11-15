@@ -19,18 +19,23 @@ concurrency:
 jobs:
   # ─── Analyze + test (minimum supported Flutter and latest stable) ─────────
   test:
-    name: Analyze + test (Flutter ${{ matrix.flutter }})
+    name: Analyze + test (Flutter ${{ matrix.label }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        # 3.29.0 is the floor declared in packages/jankdoc/pubspec.yaml.
-        flutter: ["3.29.0", "stable"]
+        # 3.29.0 is the floor declared in packages/jankdoc/pubspec.yaml;
+        # an empty version means the latest stable release.
+        include:
+          - label: "3.29.0"
+            version: "3.29.0"
+          - label: stable
+            version: ""
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ matrix.flutter == 'stable' && '' || matrix.flutter }}
+          flutter-version: ${{ matrix.version }}
           channel: stable
       - name: Fetch workspace deps
         run: flutter pub get
@@ -64,9 +69,11 @@ jobs:
       - name: Fetch deps
         working-directory: packages/jankdoc_extension
         run: flutter pub get
+      # Infos stay non-fatal: newer Flutter releases deprecate APIs (e.g.
+      # material.dart in 3.47) that the 3.29 floor still requires.
       - name: Analyze
         working-directory: packages/jankdoc_extension
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos
       - name: Test (Chrome — the app imports dart:js_interop via devtools_extensions)
         working-directory: packages/jankdoc_extension
         run: flutter test --platform chrome
@@ -102,6 +109,21 @@ jobs:
       - name: End-to-end against the real Flutter SDK (examples/lint_demo)
         working-directory: packages/jankdoc_lints
         run: dart run tool/check_demo.dart
+
+  # ─── VS Code companion extension (TypeScript) ──────────────────────────────
+  vscode:
+    name: VS Code companion extension
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: jankdoc-vscode
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npx tsc -p ./
 
   # ─── Daemon + CI binaries compile and smoke test ──────────────────────────
   daemon-compile:
