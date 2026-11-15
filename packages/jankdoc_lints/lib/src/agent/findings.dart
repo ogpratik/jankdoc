@@ -128,7 +128,7 @@ class CheckException implements Exception {
 }
 
 class CheckResult {
-  CheckResult({
+  const CheckResult({
     required this.findings,
     required this.filesChecked,
     required this.elapsed,
