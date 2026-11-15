@@ -146,16 +146,18 @@ jobs:
           dart build cli -t bin/ci.dart -o /tmp/jd/ci
       - name: Smoke-test daemon --help
         run: /tmp/jd/daemon/bundle/bin/daemon --help
-      - name: Smoke-test daemon /health (binary copied out of its bundle, as released)
+      - name: Smoke-test daemon /health (archived + extracted, as released)
         run: |
           set -e
-          cp /tmp/jd/daemon/bundle/bin/daemon /tmp/jankdoc_daemon
-          /tmp/jankdoc_daemon --port 9199 --no-kb-registry &
-          for i in $(seq 1 50); do
+          tar -czf /tmp/jd/daemon.tar.gz -C /tmp/jd/daemon bundle
+          mkdir -p /tmp/jd/extracted && tar -xzf /tmp/jd/daemon.tar.gz -C /tmp/jd/extracted
+          /tmp/jd/extracted/bundle/bin/daemon --port 9199 --no-kb-registry > /tmp/jd/daemon.log 2>&1 &
+          for i in $(seq 1 75); do
             curl -fsS http://127.0.0.1:9199/health && exit 0
             sleep 0.2
           done
-          echo "daemon never became healthy" >&2
+          echo "daemon never became healthy:" >&2
+          cat /tmp/jd/daemon.log >&2
           exit 1
       - name: Smoke-test CI runner --eval
         run: /tmp/jd/ci/bundle/bin/ci --eval --verbose
@@ -165,7 +167,7 @@ jobs:
   # regressions that would break the copy-paste getting-started snippet.
   sample-app-build:
     name: Build sample_app (macOS)
-    runs-on: macos-14
+    runs-on: macos-15
     needs: test
     steps:
       - uses: actions/checkout@v4

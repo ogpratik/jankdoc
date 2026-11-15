@@ -463,9 +463,14 @@ stable Flutter and `macos-15-intel`, `tool/build_binaries.sh` fixed, tests no
 longer touch `~/.jankdoc/sessions.db`, melos.yaml removed.
 
 Still open before beta:
-- [ ] `binary_checksums.json` macos-arm64 hash is from a local build; CI
-  builds will not match → every download refused. Fill all four from the
-  release's `.sha256` files *after* 4.3.3 and *before* 4.2.10.
+- [ ] Daemon releases are now `jankdoc-daemon-<ver>-<platform>.tar.gz` (the
+  full `dart build cli` bundle — the lone Linux executable cannot run) and
+  `binary_checksums.json` is empty, so every platform uses `dart run` until it
+  is filled. After tagging `daemon-v1.0.0` (4.3.3), run
+  `dart run tool/generate_checksums.dart --release daemon-v1.0.0` and commit
+  *before* publishing (4.2.10). Download → verify → extract → cache hit was
+  tested end-to-end against a local server; downloads without a checksum are
+  never executed.
 - [ ] Repo `ogpratik/jankdoc` is private: binary downloads 404, pub.dev links
   dead. Make public before 4.3.3.
 - [ ] `flutter analyze` does not show plugin diagnostics (exits first); docs

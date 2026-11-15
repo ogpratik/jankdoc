@@ -10,7 +10,7 @@ name: Release daemon binaries
 # The tag version MUST match `_kDaemonVersion` in
 # `packages/jankdoc/lib/src/daemon_launcher.dart`, because DaemonLauncher
 # builds its download URL as:
-#   $releaseRepo/releases/download/daemon-v$_kDaemonVersion/jankdoc-daemon-…
+#   $releaseRepo/releases/download/daemon-v$_kDaemonVersion/jankdoc-daemon-<version>-<platform>.tar.gz
 # The "Verify tag matches _kDaemonVersion" step below enforces that.
 on:
   push:
@@ -25,7 +25,7 @@ jobs:
       matrix:
         include:
           - platform: macos-arm64
-            runs-on: macos-14
+            runs-on: macos-15
             binary_ext: ""
           - platform: macos-x64
             runs-on: macos-15-intel
@@ -83,10 +83,18 @@ jobs:
           fi
 
           echo "Daemon binary version: $source_version"
-          src="packages/jankdoc/build/cli/bundle/bin/daemon${{ matrix.binary_ext }}"
-          dst="jankdoc-daemon-${source_version}-${{ matrix.platform }}${{ matrix.binary_ext }}"
-          cp "$src" "$dst"
+          # Ship the whole bundle: on Linux bin/daemon is the AOT runtime and
+          # the program sits beside it, so the executable alone cannot run.
+          dst="jankdoc-daemon-${source_version}-${{ matrix.platform }}.tar.gz"
+          tar -czf "$dst" -C packages/jankdoc/build/cli bundle
           echo "ARTIFACT=$dst" >> "$GITHUB_ENV"
+
+      - name: Smoke-test the extracted archive (as DaemonLauncher runs it)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p smoke && tar -xzf "$ARTIFACT" -C smoke
+          smoke/bundle/bin/daemon${{ matrix.binary_ext }} --help
 
       - name: Compute SHA-256 checksum
         shell: bash

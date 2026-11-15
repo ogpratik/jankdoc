@@ -22,12 +22,19 @@ const _kBinaryReleaseRepo = 'https://github.com/ogpratik/jankdoc';
 ///
 /// `_resolveDaemonCommand()` tries three strategies in order:
 ///
-/// 1. **Cache hit** — `~/.jankdoc/bin/jankdoc-daemon-<version>-<platform>`
-///    exists and passes SHA-256 verification. Fastest path (~50 ms startup).
+/// 1. **Cache hit** — `~/.jankdoc/bin/jankdoc-daemon-<version>-<platform>/`
+///    holds a bundle extracted from an archive whose SHA-256 matches the
+///    manifest. Fastest path (~50 ms startup).
 ///
-/// 2. **Download** — fetch the pre-compiled native binary from GitHub Releases,
-///    verify checksum, chmod +x, store in cache. Emits a user-visible
-///    "Downloading JankDoc daemon…" log during the ~5–10 s download window.
+/// 2. **Download** — fetch `jankdoc-daemon-<version>-<platform>.tar.gz` from
+///    GitHub Releases, verify its SHA-256 against
+///    `assets/binary_checksums.json`, extract it into the cache. Platforms
+///    without a manifest checksum skip this step: an unverified download is
+///    never executed.
+///
+///    The archive holds the whole `dart build cli` bundle: on Linux the
+///    executable is the AOT runtime and the program lives beside it, so a
+///    lone executable cannot be shipped.
 ///
 /// 3. **`dart run` fallback** — always works, even when offline or on a
 ///    platform that has no pre-compiled binary. Slower cold start (~5 s).
@@ -104,34 +111,27 @@ final class DaemonLauncher {
     // Load the bundled checksum manifest once.
     final checksums = await _loadChecksums();
 
+    final expectedChecksum = checksums[platform] ?? '';
+
     // ── Step 1: Cache hit ─────────────────────────────────────────────────
-    final cached = await _cachedBinaryPath(platform);
-    if (cached != null) {
-      final expectedChecksum = checksums[platform];
-      if (expectedChecksum == null || expectedChecksum.isEmpty) {
-        // No checksum in manifest yet (beta) — trust the cached binary.
-        _log('cache hit (no checksum enforced): $cached');
-        return (executable: cached, args: _daemonArgs());
-      }
-      final actual = await _sha256OfFile(cached);
-      if (actual == expectedChecksum) {
+    if (expectedChecksum.isNotEmpty) {
+      final cached = await _cachedExecutable(platform, expectedChecksum);
+      if (cached != null) {
         _log('cache hit: $cached');
         return (executable: cached, args: _daemonArgs());
       }
-      _log('cached binary checksum mismatch — re-downloading.');
-      await File(cached).delete();
     }
 
     // ── Step 2: Download ──────────────────────────────────────────────────
-    if (platform != 'unknown') {
+    if (platform != 'unknown' && expectedChecksum.isNotEmpty) {
       try {
-        final downloaded = await _downloadBinary(platform, checksums[platform]);
+        final downloaded = await _downloadBundle(platform, expectedChecksum);
         if (downloaded != null) {
-          _log('downloaded binary: $downloaded');
+          _log('downloaded daemon: $downloaded');
           return (executable: downloaded, args: _daemonArgs());
         }
       } on Object catch (e) {
-        _log('binary download failed ($e) — falling back to dart run.');
+        _log('daemon download failed ($e) — falling back to dart run.');
       }
     }
 
@@ -140,8 +140,7 @@ final class DaemonLauncher {
       'RUNNING FROM SOURCE via dart run jankdoc:daemon.\n'
       '  This is slower than the pre-compiled binary (~5 s cold start).\n'
       '  To resolve: ensure network access on first run so the daemon\n'
-      '  binary can be downloaded, or place a pre-compiled binary at:\n'
-      '    ${await _binaryDir()}/${_binaryName(_kDaemonVersion, platform)}',
+      '  can be downloaded from the GitHub release.',
     );
     final dart = await _findDart();
     return (
@@ -187,32 +186,42 @@ final class DaemonLauncher {
 
   Future<String> _binaryDir() async => '${await _jankdocDir()}/bin';
 
-  static String _binaryName(String version, String platform) {
-    final ext = platform.startsWith('windows') ? '.exe' : '';
-    return 'jankdoc-daemon-$version-$platform$ext';
-  }
+  static String _bundleName(String platform) =>
+      'jankdoc-daemon-$_kDaemonVersion-$platform';
 
-  /// Returns the path to the cached binary if it exists, else null.
-  Future<String?> _cachedBinaryPath(String platform) async {
-    final dir = await _binaryDir();
-    final path = '$dir/${_binaryName(_kDaemonVersion, platform)}';
-    if (File(path).existsSync()) return path;
-    return null;
+  static String _executableIn(String bundleDir, String platform) =>
+      '$bundleDir/bundle/bin/daemon${platform.startsWith('windows') ? '.exe' : ''}';
+
+  /// Marker written after a verified extraction; holds the archive checksum.
+  static const _verifiedMarker = '.sha256';
+
+  /// Returns the cached daemon executable if it was extracted from an archive
+  /// with [expectedChecksum], else null.
+  Future<String?> _cachedExecutable(
+    String platform,
+    String expectedChecksum,
+  ) async {
+    final dir = '${await _binaryDir()}/${_bundleName(platform)}';
+    final marker = File('$dir/$_verifiedMarker');
+    final executable = _executableIn(dir, platform);
+    if (!marker.existsSync() || !File(executable).existsSync()) return null;
+    if (marker.readAsStringSync().trim() != expectedChecksum) return null;
+    return executable;
   }
 
   // ── Download ────────────────────────────────────────────────────────────────
 
-  Future<String?> _downloadBinary(
+  Future<String?> _downloadBundle(
     String platform,
-    String? expectedChecksum,
+    String expectedChecksum,
   ) async {
-    final binaryName = _binaryName(_kDaemonVersion, platform);
-    // Daemon binaries live under `daemon-v<version>` tags — separate from any
+    final archiveName = '${_bundleName(platform)}.tar.gz';
+    // Daemon releases live under `daemon-v<version>` tags — separate from any
     // pub-package tags. Kept in sync with `.github/workflows/release.yaml`.
     final url =
-        '$_kBinaryReleaseRepo/releases/download/daemon-v$_kDaemonVersion/$binaryName';
+        '$_kBinaryReleaseRepo/releases/download/daemon-v$_kDaemonVersion/$archiveName';
 
-    _log('Downloading JankDoc daemon binary (~5 MB)…\n  $url');
+    _log('Downloading JankDoc daemon (~10 MB)…\n  $url');
 
     final client = http.Client();
     try {
@@ -225,35 +234,40 @@ final class DaemonLauncher {
       }
 
       final bytes = response.bodyBytes;
-
-      // Verify checksum if we have one.
-      if (expectedChecksum != null && expectedChecksum.isNotEmpty) {
-        final actual = sha256.convert(bytes).toString();
-        if (actual != expectedChecksum) {
-          _log(
-            'checksum mismatch for downloaded binary!\n'
-            '  expected: $expectedChecksum\n'
-            '  actual:   $actual\n'
-            'Refusing to execute. Will fall back to dart run.',
-          );
-          return null;
-        }
+      final actual = sha256.convert(bytes).toString();
+      if (actual != expectedChecksum) {
+        _log(
+          'checksum mismatch for downloaded daemon!\n'
+          '  expected: $expectedChecksum\n'
+          '  actual:   $actual\n'
+          'Refusing to execute. Will fall back to dart run.',
+        );
+        return null;
       }
 
-      // Write to cache.
-      final dir = await _binaryDir();
-      await Directory(dir).create(recursive: true);
-      final destPath = '$dir/$binaryName';
-      final destFile = File(destPath);
-      await destFile.writeAsBytes(bytes);
-
-      // Make executable on Unix.
-      if (!Platform.isWindows) {
-        await Process.run('chmod', ['+x', destPath]);
+      // Extract into a fresh directory; the marker is written last, so a
+      // half-finished extraction is never mistaken for a cache hit.
+      final dir = Directory('${await _binaryDir()}/${_bundleName(platform)}');
+      if (dir.existsSync()) await dir.delete(recursive: true);
+      await dir.create(recursive: true);
+      final archive = File('${dir.path}/$archiveName');
+      await archive.writeAsBytes(bytes);
+      // `tar` ships with macOS, Linux and Windows 10+.
+      final tar = await Process.run(
+        'tar',
+        ['-xzf', archiveName],
+        workingDirectory: dir.path,
+      );
+      await archive.delete();
+      final executable = _executableIn(dir.path, platform);
+      if (tar.exitCode != 0 || !File(executable).existsSync()) {
+        _log('could not extract $archiveName: ${tar.stderr}');
+        return null;
       }
+      await File('${dir.path}/$_verifiedMarker').writeAsString(actual);
 
-      _log('daemon binary cached at $destPath');
-      return destPath;
+      _log('daemon cached at ${dir.path}');
+      return executable;
     } finally {
       client.close();
     }
@@ -274,11 +288,6 @@ final class DaemonLauncher {
     } on Object catch (_) {
       return {};
     }
-  }
-
-  static Future<String> _sha256OfFile(String path) async {
-    final bytes = File(path).readAsBytesSync();
-    return sha256.convert(bytes).toString();
   }
 
   // ── Platform detection ──────────────────────────────────────────────────────
