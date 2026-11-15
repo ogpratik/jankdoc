@@ -43,8 +43,11 @@ class HookEndpoint {
         final body =
             jsonDecode(await utf8.decoder.bind(request).join())
                 as Map<String, Object?>;
-        final path = body['path'];
-        if (path is! String ||
+        final raw = body['path'];
+        final path = raw is String
+            ? File(raw).absolute.uri.normalizePath().toFilePath()
+            : null;
+        if (path == null ||
             !path.startsWith('$root/') ||
             !path.endsWith('.dart') ||
             !File(path).existsSync()) {

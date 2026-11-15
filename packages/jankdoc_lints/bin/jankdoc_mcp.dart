@@ -22,6 +22,7 @@ import 'dart:io';
 import 'package:jankdoc_lints/src/agent/checker.dart';
 import 'package:jankdoc_lints/src/agent/hook_endpoint.dart';
 import 'package:jankdoc_lints/src/agent/mcp_server.dart';
+import 'package:jankdoc_lints/src/agent/warm_analyzer.dart';
 
 Future<void> main(List<String> args) async {
   if (args.contains('-h') || args.contains('--help')) {
@@ -45,7 +46,9 @@ Future<void> main(List<String> args) async {
         endpoints.add(
           await HookEndpoint.serve(
             analyzer.root,
-            (path) async => (await analyzer.check([path])).findings,
+            (path) async => pluginEnabledFor(path)
+                ? (await analyzer.check([path])).findings
+                : const [],
           ),
         );
       } on Object catch (e) {

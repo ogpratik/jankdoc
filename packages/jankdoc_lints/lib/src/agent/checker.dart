@@ -82,7 +82,12 @@ class WarmChecker implements Checker {
       return a;
     });
     _analyzers[root] = started;
-    started.then((_) {}, onError: (Object _) => _analyzers.remove(root));
+    started.then(
+      (_) {},
+      onError: (Object _) {
+        _analyzers.remove(root);
+      },
+    );
     return started;
   }
 }

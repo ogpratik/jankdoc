@@ -187,7 +187,12 @@ class WarmAnalyzer {
 
   /// Returns the file's findings and whether a probe confirmed them.
   Future<(List<Finding>, bool)> _checkOne(String path) async {
-    final text = File(path).readAsStringSync();
+    final String text;
+    try {
+      text = File(path).readAsStringSync();
+    } on FileSystemException catch (e) {
+      throw CheckException('Could not read $path: ${e.message}');
+    }
     final uri = Uri.file(path).toString();
     final probeRuleOff = RegExp(
       r'clip_save_layer\s*:\s*(false|ignore)',
@@ -210,7 +215,8 @@ class WarmAnalyzer {
         'text': probe?.text ?? text,
       },
     });
-    var diagnostics = await done;
+    // A crashed server never publishes: don't wait out the timeout.
+    var diagnostics = await Future.any([done, exited.then((_) => null)]);
     if (_dead) {
       throw CheckException('dart language-server exited; check again.');
     }
